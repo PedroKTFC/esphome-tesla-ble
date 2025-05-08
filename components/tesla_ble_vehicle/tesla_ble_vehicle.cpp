@@ -24,6 +24,10 @@ namespace esphome
   namespace tesla_ble_vehicle
   {
     int CycleCounter = 1;
+    bool JustStarted = true;
+    bool PreviousAsleepState = false;
+    bool JustWoken = false;
+    bool OneOffUpdate = false;
     void TeslaBLEVehicle::dump_config()
     {
       ESP_LOGCONFIG(TAG, "Tesla BLE Vehicle:");
@@ -42,6 +46,10 @@ namespace esphome
       this->write_uuid_ = espbt::ESPBTUUID::from_raw(WRITE_UUID);
 
       CycleCounter = 1;
+      JustStarted = true;
+      PreviousAsleepState = false;
+      JustWoken = false;
+      OneOffUpdate = false;
       this->initializeFlash();
       this->openNVSHandle();
       this->initializePrivateKey();
@@ -885,17 +893,22 @@ namespace esphome
         CycleCounter++;
         switch (CycleCounter % 4) {
           case 1:
+
             sendCarServerVehicleActionMessage (GET_CHARGE_STATE, 0);
             ESP_LOGD(TAG, "GET_CHARGE_STATE @ %d", CycleCounter);
             break;
-          case 2:
+            case 2:
             sendCarServerVehicleActionMessage (GET_DRIVE_STATE, 0);
             ESP_LOGD(TAG, "GET_DRIVE_STATE @ %d", CycleCounter);
             break;
-          case 3:
+            case 3:
             CycleCounter = 0; // Reset - ensure can never overflow (in unlikely event runs forever!!)
+            JustStarted = false; // Have collected one set of data after startup
+            JustWoken = false; // Clear once a single cycle of data collection completed
+            OneOffUpdate = false; // Clear once a single cycle of data collection completed
             break;
         }
+
       }
     }
 
@@ -1246,6 +1259,7 @@ namespace esphome
       std::string action_str = "data update";
       if (force)
       {
+        OneOffUpdate = true;
         action_str = "data update | forced";
       }
 
@@ -1487,10 +1501,11 @@ namespace esphome
             setCarBatteryLevel (carserver_response.response_msg.vehicleData.charge_state.optional_usable_battery_level.usable_battery_level);
             setChargeCurrent (carserver_response.response_msg.vehicleData.charge_state.optional_charger_actual_current.charger_actual_current);
             setMaxSoc (carserver_response.response_msg.vehicleData.charge_state.optional_charge_limit_soc.charge_limit_soc);
-          setBatteryRange(carserver_response.response_msg.vehicleData.charge_state.optional_battery_range.battery_range);
-          std::string charging_state_text = lookup_charging_state(carserver_response.response_msg.vehicleData.charge_state.charging_state.which_type);
-          setChargingState(charging_state_text.c_str());
-          charging_state_ = charging_state_text;
+            setBatteryRange(carserver_response.response_msg.vehicleData.charge_state.optional_battery_range.battery_range);
+            std::string charging_state_text = lookup_charging_state(carserver_response.response_msg.vehicleData.charge_state.charging_state.which_type);
+            setChargingState(charging_state_text.c_str());
+            charging_state_ = charging_state_text;
+
           }
           else if (carserver_response.response_msg.vehicleData.has_drive_state)
           {

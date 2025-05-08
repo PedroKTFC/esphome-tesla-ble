@@ -204,7 +204,7 @@ namespace esphome
                 isUserPresentSensor->set_has_state(has_state);
                 // Non-binary sensors cater naturally for unknown
                 if (!has_state)
-                { /*
+                {/*
                     ChargeStateSensor->publish_state (NAN);
                     OdometerStateSensor->publish_state (NAN);
                     ChargeCurrentStateSensor->publish_state (NAN);
@@ -213,7 +213,7 @@ namespace esphome
                     ChargingStateSensor->publish_state ("Unknown");
                     LastUpdateStateSensor->publish_state ("Unknown");
                     BatteryRangeStateSensor->publish_state (NAN);
-                 */}
+                */}
             }
             void setCarBatteryLevel (int battery_level)
             {
@@ -300,12 +300,12 @@ namespace esphome
             {
                 switch (shift_state)
                 {
-                    case CarServer_ShiftState_Invalid_tag: return ("Invalid");
-                    case CarServer_ShiftState_P_tag: return ("P");
-                    case CarServer_ShiftState_R_tag: return ("R");
-                    case CarServer_ShiftState_N_tag: return ("N");
-                    case CarServer_ShiftState_D_tag: return ("D");
-                    case CarServer_ShiftState_SNA_tag: return ("SNA");
+                    case CarServer_ShiftState_Invalid_tag:  return ("Invalid");
+                    case CarServer_ShiftState_P_tag:        return ("P");
+                    case CarServer_ShiftState_R_tag:        return ("R");
+                    case CarServer_ShiftState_N_tag:        return ("N");
+                    case CarServer_ShiftState_D_tag:        return ("D");
+                    case CarServer_ShiftState_SNA_tag:      return ("SNA");
                 }
                 return ("Shift state look up error");
             }
@@ -314,14 +314,14 @@ namespace esphome
             {
                 switch (charging_state)
                 {
-                    case CarServer_ChargeState_ChargingState_Unknown_tag: return ("Unknown");
-                    case CarServer_ChargeState_ChargingState_Disconnected_tag: return ("Disconnected");
-                    case CarServer_ChargeState_ChargingState_NoPower_tag: return ("No Power");
-                    case CarServer_ChargeState_ChargingState_Starting_tag: return ("Starting");
-                    case CarServer_ChargeState_ChargingState_Charging_tag: return ("Charging");
-                    case CarServer_ChargeState_ChargingState_Complete_tag: return ("Complete");
-                    case CarServer_ChargeState_ChargingState_Stopped_tag: return ("Stopped");
-                    case CarServer_ChargeState_ChargingState_Calibrating_tag: return ("Calibrating");
+                    case CarServer_ChargeState_ChargingState_Unknown_tag:       return ("Unknown");
+                    case CarServer_ChargeState_ChargingState_Disconnected_tag:  return ("Disconnected");
+                    case CarServer_ChargeState_ChargingState_NoPower_tag:       return ("No Power");
+                    case CarServer_ChargeState_ChargingState_Starting_tag:      return ("Starting");
+                    case CarServer_ChargeState_ChargingState_Charging_tag:      return ("Charging");
+                    case CarServer_ChargeState_ChargingState_Complete_tag:      return ("Complete");
+                    case CarServer_ChargeState_ChargingState_Stopped_tag:       return ("Stopped");
+                    case CarServer_ChargeState_ChargingState_Calibrating_tag:   return ("Calibrating");
                 }
                 return ("Charging state look up error");
             }
