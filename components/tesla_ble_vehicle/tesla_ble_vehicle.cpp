@@ -193,6 +193,13 @@ namespace esphome
         {
           if (!this->isAsleepSensor->state == false)
           {
+            if (current_command.execute_name.find("get") == 0)
+            {
+              ESP_LOGI(TAG, "[%s] Car is asleep, won't wake for a 'get' command",
+                       current_command.execute_name.c_str());
+              command_queue_.pop();
+              return;
+            }
             ESP_LOGW(TAG, "[%s] Car is asleep, initiating wake..", current_command.execute_name.c_str());
             current_command.state = BLECommandState::WAITING_FOR_WAKE;
           }
