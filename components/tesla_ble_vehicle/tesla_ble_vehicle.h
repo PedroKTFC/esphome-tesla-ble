@@ -125,6 +125,12 @@ namespace esphome
                                 public ble_client::BLEClientNode
         {
         public:
+            std::string charging_state_;
+            uint32_t last_update_time_ = 0;
+            uint32_t last_wake_time_ = 0;
+            static constexpr uint32_t CHARGING_POLL_INTERVAL = 2000;
+            static constexpr uint32_t NON_CHARGING_POLL_INTERVAL = 60000;
+            static constexpr uint32_t WAKE_POLLING_PERIOD = 300000;
             TeslaBLEVehicle();
             void setup() override;
             void loop() override;
@@ -241,6 +247,7 @@ namespace esphome
 
             void setChargingState (std::string charging_state)
             {
+                charging_state_ = charging_state;
                 ChargingStateSensor->publish_state (charging_state);
             }
 
