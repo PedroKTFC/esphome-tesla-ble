@@ -32,6 +32,12 @@ tesla_ble_vehicle:
     name: "Charge current"
   max_soc:
     name: "Charge limit"
+  battery_range:
+    name: "Range"
+  charging_state:
+    name: "Charging state"
+  last_update:
+    name: "Last update"
 
 button:
   - platform: template

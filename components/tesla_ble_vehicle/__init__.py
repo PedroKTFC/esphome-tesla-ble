@@ -3,7 +3,7 @@ import esphome.config_validation as cv
 from esphome.components import ble_client, binary_sensor, text_sensor, sensor
 from esphome.const import CONF_ID
 
-CODEOWNERS = ["@yoziru"]
+CODEOWNERS = ["@PedroKTFC"]
 DEPENDENCIES = ["ble_client"]
 
 tesla_ble_vehicle_ns = cg.esphome_ns.namespace("tesla_ble_vehicle")
@@ -22,6 +22,9 @@ CONF_CHARGE_STATE = "charge_state"
 CONF_ODOMETER = "odometer"
 CONF_CHARGE_CURRENT = "charge_current"
 CONF_MAX_SOC = "max_soc"
+CONF_BATTERY_RANGE = "battery_range"
+CONF_CHARGING_STATE = "charging_state"
+CONF_LAST_UPDATE = "last_update"
 
 CONFIG_SCHEMA = (
     cv.Schema(
@@ -59,6 +62,16 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_MAX_SOC): sensor.sensor_schema(
                 icon="mdi:battery-lock", device_class=sensor.DEVICE_CLASS_ENERGY_STORAGE,
                 unit_of_measurement="%"
+            ).extend(),
+            cv.Optional(CONF_BATTERY_RANGE): sensor.sensor_schema(
+                icon="mdi:gauge", device_class=sensor.DEVICE_CLASS_DISTANCE,
+                accuracy_decimals=2, unit_of_measurement="miles"
+            ).extend(),
+            cv.Optional(CONF_CHARGING_STATE): text_sensor.text_sensor_schema(
+                icon="mdi:ev-station"
+            ).extend(),
+            cv.Optional(CONF_LAST_UPDATE): text_sensor.text_sensor_schema(
+                icon="mdi:update"
             ).extend(),
         }
     )
@@ -119,3 +132,18 @@ async def to_code(config):
         conf = config[CONF_MAX_SOC]
         ss = await sensor.new_sensor(conf)
         cg.add(var.set_sensor_max_soc_state(ss))
+
+    if CONF_BATTERY_RANGE in config:
+        conf = config[CONF_BATTERY_RANGE]
+        ss = await sensor.new_sensor(conf)
+        cg.add(var.set_sensor_battery_range_state(ss))
+
+    if CONF_CHARGING_STATE in config:
+        conf = config[CONF_CHARGING_STATE]
+        ts = await text_sensor.new_text_sensor(conf)
+        cg.add(var.set_text_sensor_charging_state(ts))
+
+    if CONF_LAST_UPDATE in config:
+        conf = config[CONF_LAST_UPDATE]
+        ts = await text_sensor.new_text_sensor(conf)
+        cg.add(var.set_text_sensor_last_update_state(ts))

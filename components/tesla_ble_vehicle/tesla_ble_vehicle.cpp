@@ -116,6 +116,13 @@ namespace esphome
       case BLECommandState::IDLE:
         ESP_LOGI(TAG, "[%s] Preparing command..", current_command.execute_name.c_str());
         current_command.started_at = now;
+        if (this->isAsleepSensor->state && current_command.execute_name.find("get") == 0)
+        {
+          ESP_LOGI(TAG, "[%s] Car is asleep, won't wake for a 'get' command",
+                   current_command.execute_name.c_str());
+          command_queue_.pop();
+          return;
+        }
         switch (current_command.domain)
         {
         case UniversalMessage_Domain_DOMAIN_BROADCAST:
@@ -193,13 +200,6 @@ namespace esphome
         {
           if (!this->isAsleepSensor->state == false)
           {
-            if (current_command.execute_name.find("get") == 0)
-            {
-              ESP_LOGI(TAG, "[%s] Car is asleep, won't wake for a 'get' command",
-                       current_command.execute_name.c_str());
-              command_queue_.pop();
-              return;
-            }
             ESP_LOGW(TAG, "[%s] Car is asleep, initiating wake..", current_command.execute_name.c_str());
             current_command.state = BLECommandState::WAITING_FOR_WAKE;
           }
@@ -859,12 +859,29 @@ namespace esphome
     void TeslaBLEVehicle::update()
     {
       ESP_LOGD(TAG, "Updating Tesla BLE Vehicle component, command queue size is %d ..", command_queue_.size());
+
+      uint32_t now = millis();
+
       if (this->node_state == espbt::ClientState::ESTABLISHED)
       {
         ESP_LOGD(TAG, "Querying vehicle status update..");
         enqueueVCSECInformationRequest();
+      }
 
-        // Start retrieval of data from car. Space them out evenlyish!
+      bool is_charging = (!charging_state_.empty() && charging_state_ == "Charging"); 
+      bool within_wake_period = (last_wake_time_ != 0 && (now - last_wake_time_) <= WAKE_POLLING_PERIOD);
+      uint32_t poll_interval = (is_charging || within_wake_period) ? CHARGING_POLL_INTERVAL : NON_CHARGING_POLL_INTERVAL;
+
+      if (now - last_update_time_ < poll_interval)
+      {
+        ESP_LOGV(TAG, "Skipping data update, not enough time elapsed (%d ms < %d ms)", now - last_update_time_, poll_interval);
+        return;
+      }
+
+      last_update_time_ = now;
+
+      if (this->node_state == espbt::ClientState::ESTABLISHED)
+      {
         CycleCounter++;
         switch (CycleCounter % 4) {
           case 1:
@@ -879,7 +896,6 @@ namespace esphome
             CycleCounter = 0; // Reset - ensure can never overflow (in unlikely event runs forever!!)
             break;
         }
-        return;
       }
     }
 
@@ -1471,6 +1487,10 @@ namespace esphome
             setCarBatteryLevel (carserver_response.response_msg.vehicleData.charge_state.optional_usable_battery_level.usable_battery_level);
             setChargeCurrent (carserver_response.response_msg.vehicleData.charge_state.optional_charger_actual_current.charger_actual_current);
             setMaxSoc (carserver_response.response_msg.vehicleData.charge_state.optional_charge_limit_soc.charge_limit_soc);
+          setBatteryRange(carserver_response.response_msg.vehicleData.charge_state.optional_battery_range.battery_range);
+          std::string charging_state_text = lookup_charging_state(carserver_response.response_msg.vehicleData.charge_state.charging_state.which_type);
+          setChargingState(charging_state_text.c_str());
+          charging_state_ = charging_state_text;
           }
           else if (carserver_response.response_msg.vehicleData.has_drive_state)
           {
@@ -1488,17 +1508,24 @@ namespace esphome
     int TeslaBLEVehicle::handleVCSECVehicleStatus(VCSEC_VehicleStatus vehicleStatus)
     {
       log_vehicle_status(TAG, &vehicleStatus);
+      bool was_asleep = this->isAsleepSensor->state;
       switch (vehicleStatus.vehicleSleepStatus)
       {
       case VCSEC_VehicleSleepStatus_E_VEHICLE_SLEEP_STATUS_AWAKE:
         this->updateIsAsleep(false);
+        if (was_asleep) {
+          last_wake_time_ = millis();
+          ESP_LOGD(TAG, "Vehicle woke up, setting wake time to %u", last_wake_time_);
+        }
         break;
       case VCSEC_VehicleSleepStatus_E_VEHICLE_SLEEP_STATUS_ASLEEP:
         this->updateIsAsleep(true);
+        last_wake_time_ = 0;
         break;
       case VCSEC_VehicleSleepStatus_E_VEHICLE_SLEEP_STATUS_UNKNOWN:
       default:
         this->updateIsAsleep(NAN);
+        last_wake_time_ = 0;
         break;
       } // switch vehicleSleepStatus
 
