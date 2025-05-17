@@ -1697,9 +1697,9 @@ namespace esphome
         this->node_state = espbt::ClientState::IDLE;
 
         // set binary sensors to unknown
-        this->setSensors(false);
-        this->setInfotainmentSensors (false);
-        this->setChargeFlapHasState(false);
+        // this->setSensors(false);
+        // this->setInfotainmentSensors (false);
+        // this->setChargeFlapHasState(false);
 
         // TODO: charging switch off
         this->status_set_warning("BLE connection closed");
