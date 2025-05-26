@@ -18,7 +18,7 @@ esphome:
     name: PedroKTFC.esphome-tesla-ble
     version: "2025.0.1"
   libraries:
-    - https://github.com/PedroKTFC/tesla-ble.git
+    - https://github.com/PedroKTFC/tesla-ble.git@dev
 logger:
   level: INFO
 
