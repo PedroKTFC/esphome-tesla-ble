@@ -16,7 +16,7 @@ tesla_ble_vehicle:
   poll_data_period: 60 # Normal period when polling for data when not asleep (s)
   poll_asleep_period: 60 # Period to poll for data when asleep (s)
   poll_charging_period: 2 # Period to poll for data when charging (s)
-  ble_disconnected_min_time: 10 # Minimum time BLE must be disconnected before sensors are Unknwon (s)
+  ble_disconnected_min_time: 300 # Minimum time BLE must be disconnected before sensors are Unknwon (s)
 
   is_asleep:
     name: "Asleep"
@@ -35,6 +35,9 @@ tesla_ble_vehicle:
     name: "Frunk"
   shift_state:
     name: "Shift state"
+  defrost_state:
+    id: "defrost_state"
+    name: "Defrost state"
   charge_state:
     id: "charge_state"
     name: "Charge level"
@@ -202,9 +205,24 @@ switch:
     assumed_state: true # we can't read the state 
     restore_mode: RESTORE_DEFAULT_OFF
     turn_on_action:
-      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(SET_WINDOWS_SWITCH,1);
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (SET_WINDOWS_SWITCH, 1);
     turn_off_action:
-      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(SET_WINDOWS_SWITCH,0);
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (SET_WINDOWS_SWITCH, 0);
+
+  - platform: template
+    name: Defrost car
+    optimistic: true
+    icon: mdi:snowflake-melt
+    lambda: |-
+      if (id(defrost_state).state != "Off") {
+        return true;
+      } else {
+        return false;
+      }
+    turn_on_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (DEFROST_CAR, 1);
+    turn_off_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (DEFROST_CAR, 0);
 
   - platform: template
     name: "Boot"
