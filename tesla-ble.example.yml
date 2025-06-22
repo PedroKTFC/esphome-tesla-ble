@@ -1,19 +1,19 @@
 substitutions:
   # all substitutions for this project
-  espidf_version: 5.3.0
-  platformio_version: 6.8.1
   friendly_name: Tesla BLE
   device_name: tesla-ble
   device_description: Tesla BLE
-  board: esp32dev
-  variant: esp32
-  flash_size: 4MB
   ble_mac_address: !secret ble_mac_address
   tesla_vin: !secret tesla_vin
   charging_amps_max: "32"
 
 esp32:
-  board: esp32dev  # set as needed for your board
+  # generic ESP32: board esp32dev, variant esp32, flash: 4MB
+  # M5stack AtomS3: board esp32-s3-devkitc-1, variant esp32s3, flash: 8MB
+  #
+  board: esp32dev  # set as needed for your board, see above
+  variant: esp32   # set as needed for your board, see above
+  flash_size: 4MB
   framework:
     type: esp-idf
     version: 5.3.2
@@ -37,7 +37,7 @@ packages:
   # listener: github://PedroKTFC/esphome-tesla-ble/packages/listener.yml # Uncomment this to scan find your VIN BLE MAC address
 
 esphome:
-  name: ${name}
+  name: ${device_name}
   name_add_mac_suffix: false
   friendly_name: ${friendly_name}
   libraries:
