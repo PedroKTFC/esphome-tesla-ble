@@ -8,13 +8,10 @@ namespace esphome
     namespace binary_sensor
     {
 
-        class CustomBinarySensor : public BinarySensor
-        {
+        class CustomBinarySensor : public BinarySensor {
         public:
-            void set_has_state(bool has_state)
-            {
-                this->has_state_ = has_state;
-                this->state_callback_.call(this->state);
+            void set_custom_state(bool state) {
+                this->publish_state(state);  // Publish that we have a state
             }
         };
 
