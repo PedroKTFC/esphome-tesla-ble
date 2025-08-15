@@ -1,6 +1,6 @@
 substitutions:
-  ble_mac_address: !secret ble_mac_address
-  tesla_vin: !secret tesla_vin
+  ble_mac_address: ${ble_mac_address}
+  tesla_vin: ${tesla_vin}
   charging_amps_max: "32"
 
 ble_client:
