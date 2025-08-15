@@ -20,8 +20,10 @@ tesla_ble_vehicle:
   fast_poll_if_unlocked: 1 # if != 0, fast polls are enabled when unlocked
 
   is_asleep:
+    id: "is_asleep"
     name: "Asleep"
   is_user_present:
+    id: "is_user_present"
     name: "User presence"
   is_unlocked:
     id: "is_unlocked"
@@ -36,6 +38,7 @@ tesla_ble_vehicle:
     id: "is_frunk_open"
     name: "Frunk"
   shift_state:
+    id: "shift_state"
     name: "Shift state"
   defrost_state:
     id: "defrost_state"
@@ -44,6 +47,7 @@ tesla_ble_vehicle:
     id: "charge_state"
     name: "Charge level"
   odometer:
+    id: "odometer"
     name: "Odometer"
     filters:
       - multiply: 0.01 # Odometer is in hundredths of a mile (can use this to convert to km)
@@ -66,18 +70,22 @@ tesla_ble_vehicle:
     id: "max_amps"
     name: "Current limit"
   battery_range:
+    id: "battery_range"
     name: "Range"
   charging_state:
     id: "charging_state"
     name: "Charging state"
   last_update:
+    id: "last_update"
     name: "Last update"
   is_climate_on:
     id: "is_climate_on"
     name: "Climate"
   internal_temp:
+    id: "internal_temp"
     name: "Interior"
   external_temp:
+    id: "external_temp"
     name: "Exterior"
   windows_state:
     id: "windows_state"
