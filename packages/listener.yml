@@ -1,5 +1,5 @@
 substitutions:
-  tesla_vin: !secret tesla_vin
+  tesla_vin: $tesla_vin
 
 # Enable this to scan for BLE devices
 tesla_ble_listener:
