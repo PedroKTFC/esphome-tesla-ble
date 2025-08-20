@@ -329,7 +329,12 @@ number:
     set_action:
       - lambda: |-
           int var_x = static_cast<int>(x);
-          id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(SET_CHARGING_AMPS, var_x);
+          if (x < 5) {
+              id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(SET_CHARGING_AMPS, var_x);
+              id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(SET_CHARGING_AMPS, var_x);
+          } else {
+              id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(SET_CHARGING_AMPS, var_x);
+          }
     lambda: |-
       if (id(max_amps).has_state())
       {
