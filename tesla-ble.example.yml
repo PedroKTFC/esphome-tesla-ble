@@ -39,8 +39,7 @@ esphome:
     - TeslaBLE=https://github.com/PedroKTFC/tesla-ble.git
 
 tesla_ble_vehicle:
-  odometer: # miles by default, edit the entity in home assistant if you need km
-    name: "Odometro" # Rename if desired
+#  odometer: check or unit (miles or km) is correct. If needed, ajust unit of entity accordingly in Home Assistant 
 # At the time of writing, these are set to the default values. If you require a different value, uncomment and edit the value
 #  update_interval: 2s # Base polling interval, used for VCSEC sensors
 #  post_wake_poll_time: 300 # How long to poll for data after car awakes (s)
