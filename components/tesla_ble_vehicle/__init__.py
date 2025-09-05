@@ -24,9 +24,11 @@ CONF_FRUNK_STATE = "is_frunk_open"
 CONF_CHARGE_STATE = "charge_state"
 CONF_ODOMETER = "odometer"
 CONF_CHARGE_CURRENT = "charge_current"
+CONF_CHARGE_VOLTAGE = "charge_voltage"
 CONF_CHARGE_POWER = "charge_power"
 CONF_MAX_SOC = "max_soc"
 CONF_MAX_AMPS = "max_amps"
+CONF_MINS_TO_LIMIT = "mins_to_limit"
 CONF_BATTERY_RANGE = "battery_range"
 CONF_CHARGING_STATE = "charging_state"
 CONF_CHARGE_ENERGY_ADDED = "charge_energy_added"
@@ -40,7 +42,7 @@ CONF_POST_WAKE_POLL_TIME = "post_wake_poll_time" # How long to poll for data aft
 CONF_POLL_DATA_PERIOD = "poll_data_period" # Normal period when polling for data when not asleep (s)
 CONF_POLL_ASLEEP_PERIOD = "poll_asleep_period" # Period to poll for data when asleep (s)
 CONF_POLL_CHARGING_PERIOD = "poll_charging_period" # Period to poll for data when charging (s)
-CONF_BLE_DISCONNECTED_MIN_TIME = "ble_disconnected_min_time" # Minimum time BLE must be disconnected before sensors are Unknwon (s)
+CONF_BLE_DISCONNECTED_MIN_TIME = "ble_disconnected_min_time" # Minimum time BLE must be disconnected before sensors are Unknown (s)
 CONF_FAST_POLL_IF_UNLOCKED = "fast_poll_if_unlocked" # if != 0, fast polls are enabled when unlocked
 
 CONFIG_SCHEMA = (
@@ -99,6 +101,10 @@ CONFIG_SCHEMA = (
                 icon="mdi:current-ac", device_class=sensor.DEVICE_CLASS_CURRENT,
                 unit_of_measurement="A"
             ).extend(),
+            cv.Optional(CONF_CHARGE_VOLTAGE): sensor.sensor_schema(
+                icon="mdi:flash-triangle", device_class=sensor.DEVICE_CLASS_VOLTAGE,
+                unit_of_measurement="V"
+            ).extend(),
             cv.Optional(CONF_CHARGE_POWER): sensor.sensor_schema(
                 icon="mdi:lightning-bolt-circle", device_class=sensor.DEVICE_CLASS_POWER,
                 unit_of_measurement="kW"
@@ -110,6 +116,10 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_MAX_AMPS): sensor.sensor_schema(
                 icon="mdi:current-ac", device_class=sensor.DEVICE_CLASS_CURRENT,
                 unit_of_measurement="A"
+            ).extend(),
+            cv.Optional(CONF_MINS_TO_LIMIT): sensor.sensor_schema(
+                icon="mdi:timer-sand", device_class=sensor.DEVICE_CLASS_DURATION,
+                unit_of_measurement="min"
             ).extend(),
             cv.Optional(CONF_BATTERY_RANGE): sensor.sensor_schema(
                 icon="mdi:gauge", device_class=sensor.DEVICE_CLASS_DISTANCE,
@@ -195,6 +205,10 @@ async def to_code(config):
         conf = config[CONF_CHARGE_CURRENT]
         ss = await sensor.new_sensor(conf)
         cg.add(var.set_sensor_charge_current_state(ss))
+    if CONF_CHARGE_VOLTAGE in config:
+        conf = config[CONF_CHARGE_VOLTAGE]
+        ss = await sensor.new_sensor(conf)
+        cg.add(var.set_sensor_charge_voltage_state(ss))
     if CONF_CHARGE_POWER in config:
         conf = config[CONF_CHARGE_POWER]
         ss = await sensor.new_sensor(conf)
@@ -207,6 +221,10 @@ async def to_code(config):
         conf = config[CONF_MAX_AMPS]
         ss = await sensor.new_sensor(conf)
         cg.add(var.set_sensor_max_amps_state(ss))
+    if CONF_MINS_TO_LIMIT in config:
+        conf = config[CONF_MINS_TO_LIMIT]
+        ss = await sensor.new_sensor(conf)
+        cg.add(var.set_sensor_mins_to_limit_state(ss))
     if CONF_BATTERY_RANGE in config:
         conf = config[CONF_BATTERY_RANGE]
         ss = await sensor.new_sensor(conf)

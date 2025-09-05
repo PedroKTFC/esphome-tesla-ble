@@ -16,7 +16,7 @@ tesla_ble_vehicle:
   poll_data_period: 60 # Normal period when polling for data when not asleep (s)
   poll_asleep_period: 60 # Period to poll for data when asleep (s)
   poll_charging_period: 10 # Period to poll for data when charging (s)
-  ble_disconnected_min_time: 300 # Minimum time BLE must be disconnected before sensors are Unknwon (s)
+  ble_disconnected_min_time: 300 # Minimum time BLE must be disconnected before sensors are Unknown (s)
   fast_poll_if_unlocked: 1 # if != 0, fast polls are enabled when unlocked
 
   is_asleep:
@@ -54,6 +54,9 @@ tesla_ble_vehicle:
   charge_current:
     id: "charge_current"
     name: "Charge current"
+  charge_voltage:
+    id: "charge_voltage"
+    name: "Charge voltage"  
   charge_power:
     id: "charge_power"
     name: "Charge power"
@@ -69,6 +72,9 @@ tesla_ble_vehicle:
   max_amps:
     id: "max_amps"
     name: "Current limit"
+  mins_to_limit:
+    id: "mins_to_limit"
+    name: "Minutes to limit"
   battery_range:
     id: "battery_range"
     name: "Range"
