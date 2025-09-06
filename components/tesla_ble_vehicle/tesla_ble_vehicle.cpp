@@ -997,8 +997,8 @@ namespace esphome
         }
         previous_asleep_state_ = this->isAsleepSensor->state;
 
-        ESP_LOGI (TAG, "Reading INFOTAINMENT, previous_asleep_state_=%d, car_just_woken_=%d, car_is_charging_=%d, Unlocked=%d, User=%d, fast_poll_if_unlocked_=%d",
-                  previous_asleep_state_, car_just_woken_, car_is_charging_, this->isUnlockedSensor->state, this->isUserPresentSensor->state, fast_poll_if_unlocked_);
+        ESP_LOGW (TAG, "Reading INFOTAINMENT, previous_asleep_state_=%d, car_just_woken_=%d, car_is_charging_=%d, Unlocked=%d, User=%d, command_queue_.size=%d",
+                  previous_asleep_state_, car_just_woken_, car_is_charging_, this->isUnlockedSensor->state, this->isUserPresentSensor->state, command_queue_.size());
         
         //if (car_just_woken_ or OneOffUpdate or car_is_charging_ or this->isUnlockedSensor->state or this->isUserPresentSensor->state)
         if (one_off_update_ or (this->isUnlockedSensor->state and (fast_poll_if_unlocked_ > 0)) or this->isUserPresentSensor->state)
