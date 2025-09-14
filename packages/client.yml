@@ -13,11 +13,11 @@ tesla_ble_vehicle:
   vin: $tesla_vin
   update_interval: 10s # default
   post_wake_poll_time: 300 # How long to poll for data after car awakes (s)
-  poll_data_period: 60 # Normal period when polling for data when not asleep (s)
-  poll_asleep_period: 60 # Period to poll for data when asleep (s)
+  poll_data_period: 90 # Normal period when polling for data when not asleep (s)
+  poll_asleep_period: 120 # Period to poll for data when asleep (s)
   poll_charging_period: 10 # Period to poll for data when charging (s)
-  ble_disconnected_min_time: 300 # Minimum time BLE must be disconnected before sensors are Unknown (s)
-  fast_poll_if_unlocked: 1 # if != 0, fast polls are enabled when unlocked
+  ble_disconnected_min_time: 600 # Minimum time BLE must be disconnected before sensors are Unknown (s)
+  fast_poll_if_unlocked: 0 # if != 0, fast polls are enabled when unlocked
 
   is_asleep:
     id: "is_asleep"
