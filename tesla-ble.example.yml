@@ -1,11 +1,14 @@
 substitutions:
+  # Note substitutions in your yaml will override those here
   friendly_name: Tesla BLE
   device_name: tesla-ble
   device_description: Tesla BLE
-  ble_mac_address: !secret ble_mac_address
+  ble_mac_address: !secret ble_mac_address # note this and the following are mandatory and pulled from the secrets file
   tesla_vin: !secret tesla_vin
   charging_amps_max: "32"
-# The following shows the default board and variant settings. Uncomment and change them if they are not appropriate for your board:
+
+# The following shows the default board and variant settings. 
+# Uncomment and changing them is only needed if they are not appropriate for your board (see read.me documentation for support):
   #board: "esp32dev"
   #variant: "ESP32"
 
@@ -19,6 +22,7 @@ packages:
   project: github://PedroKTFC/esphome-tesla-ble/packages/project.yml
   client: github://PedroKTFC/esphome-tesla-ble/packages/client.yml
   # listener: github://PedroKTFC/esphome-tesla-ble/packages/listener.yml # Uncomment this to scan find your VIN BLE MAC address
+  # language: github://PedroKTFC/esphome-tesla-ble/packages/language_hu.yml # Uncomment this to translate the entity names to your language. If yours is missing, submit a PR here!
 
 # The following shows how to change the name of a sensor and how to change any of the parameters.
 # tesla_ble_vehicle: # THIS LINE MUST BE UNCOMMENTED IF ANY OF THE CHANGES BELOW ARE WANTED

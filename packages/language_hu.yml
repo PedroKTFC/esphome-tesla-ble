@@ -93,7 +93,7 @@ switch:
     name: "Őrszem"
   - id: !extend sw_climate
     name: "Klíma"
-  - id: !extend sw_steer_whl_heat
+  - id: !extend sw_steering_wheel_heat
     name: "Kormányfűtés"
   - id: !extend sw_defrost_car
     name: "Fagymentesítés"

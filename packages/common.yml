@@ -12,6 +12,12 @@ sensor:
 binary_sensor:
   - platform: status
     name: "Status"
+  - platform: ble_presence
+    mac_address: $ble_mac_address
+    device_class: connectivity
+    name: "BLE Status"
+    entity_category: diagnostic
+    timeout: 5s
 
 text_sensor:
   - platform: version

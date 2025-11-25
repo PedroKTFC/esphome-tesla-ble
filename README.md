@@ -11,6 +11,28 @@ This project [PedroKTFC/esphome-tesla-ble](https://github.com/PedroKTFC/esphome-
 | - | - | - | - |
 | <img src="./docs/ha-controls.png"> | <img src="./docs/ha-sensors1.png"> | <img src="./docs/ha-sensors2.png"> | <img src="./docs/ha-diagnostic.png"> |
 
+## If it doesn't build
+
+I've put this section at the start because it seems people don't always read all the way to the end! So please read this section at least.
+> [!TIP]
+> **Always** start from the example yaml [`tesla-ble-example.yml`](./tesla-ble.example.yml). This has been tested many times and should work in almost every case.
+
+If the build fails, try the following (assuming you're building using the Home Assistant ESPHome builder):
+- In the ESPHome builder UI, clean the build files (as shown in the image below) and try installing again. If that doesn't work, try the next step.
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <img width="35%" alt="image" src="https://github.com/user-attachments/assets/17b8a954-9af1-4c0b-9f64-bc0f5405f93c" />
+
+- Again in the ESPHome builder UI, click on the CLEAN ALL option and try installing again (as shown in the image below). If that still doesn't work, try the next step.
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <img width="40%" alt="Untitled" src="https://github.com/user-attachments/assets/43ede5f6-4e42-4124-ae22-9024a29b1754" />
+
+- Uninstall and install the ESPHome add-on and try installing again.
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <img width="25%" alt="image" src="https://github.com/user-attachments/assets/9700c133-4f2c-494a-8a42-4d4ab1d83942" />
+
+> [!TIP]
+> If these don't work, raise an issue and include a copy of your yaml and that part of your log that shows the error and I'll try to work out what's going wrong. (If you don't provide these, I'm afraid I'll simply ask you for them in the issue, I can't help without any information.)
+
 ## Features
 
 ### Controls
@@ -79,7 +101,7 @@ These are the diagnostic button actions:
 
 ### Configuration
 
-There are five number and two switch actions that allow the dynamic update of the polling parameters (see below). These are disabled by default as I recommend they should be changed through yaml but they are useful for tuning/debugging your setup. Note there is no equivalent to the `update_interval` parameter - this can still only be updated through yaml (and so a re-build). The following lists them with the equivalent polling parameter:
+There are five number and two switch actions that allow the dynamic update of the polling parameters (see below). These are disabled by default as I recommend they should be changed through yaml but they are useful for tuning/debugging your setup. If enabled, their setting takes priority over the yaml definition and they are preserved over a reboot. Note there is no equivalent to the `update_interval` parameter - this can still only be updated through yaml (and so a re-build). The following lists them with the equivalent polling parameter:
 
 - Post wake poll time = post_wake_poll_time (number)
 - Poll data period = poll_data_period (number)
@@ -96,12 +118,15 @@ There are five number and two switch actions that allow the dynamic update of th
 - Alternatively, [M5Stack Atom S3-Lite](https://docs.m5stack.com/en/core/AtomS3%20Lite)
 - Alternatively, [M5Stack Nano C6](https://docs.m5stack.com/en/core/M5NanoC6)
 - USB-C cable to flash conveniently the M5Stack of your choice
+- [ESP32 C3 Super Mini](https://www.espboards.dev/esp32/esp32-c3-super-mini/)
+
+See below for build instructions for different board types.
 
 ## Usage
 
 ### Vehicle data polling
 
-There are several key parameters that determine the polling activity as follows:
+There are several parameters that determine the polling activity which are described in the table below. The polling engine loops every `update_interval` seconds and, as a minimum, polls the car's VCSEC system. All other polls are based on this so that if any of the other parameters are not multiples of `update_interval`, the timings will be longer than expected. For example, if `update_interval` is set to 30s and `poll_data_period` is set to 75s, then the effective `poll_data_period` will be 90s.
 
 | Name | Type | Default | Supported options | Description |
 | --- | --- | --- | --- | --- |
@@ -111,10 +136,10 @@ There are several key parameters that determine the polling activity as follows:
 |`poll_asleep_period`|number|60|>0 seconds|The vehicle is polled every this parameter seconds while being asleep and beyond the `post_wake_poll_time` after awakening. If set too short it can prevent the vehicle falling asleep.|
 |`poll_charging_period`|number|10|>0 seconds|While charging, the car can be polled more frequently if desired using this parameter.|
 |`ble_disconnected_min_time`|number|300|>0 seconds|Sensors will only be set to *Unknown* if the BLE connection remains disconnected for at least this time (useful if you have a slightly flakey BLE connection to your vehicle). Setting it to zero means sensors will be set to *Unknown* as soon as the BLE connection disconnects.|
-|`fast_poll_if_unlocked`|number|0|0, >0|Controls whether fast polls are enabled when unlocked. If the vehicle is unlocked (and `fast_poll_if_unlocked` > 0) or a person is detected as present in the vehicle, the vehicle will be polled at `update_interval` until it is locked and/or no person is present in the vehicle. This could be useful if you wish to quickly detect a change in the vehicle (for example, I use it to detect when it is put into gear so I can trigger an automation to open my electric gate). Set to 0 to disable, any value > 0 to enable.|
+|`fast_poll_if_unlocked`|number|0|0, >0|Controls whether fast polls are enabled when unlocked. If the vehicle is unlocked (and `fast_poll_if_unlocked` > 0), it will be polled at `update_interval` until it is locked. This could be useful if you wish to quickly detect a change in the vehicle (for example, I use it to detect when it is put into gear so I can trigger an automation to open my electric gate). Set to 0 to disable, any value > 0 to enable.|
 |`wake_on_boot`|number|0|0, >0|Controls whether the car is woken when the board restarts. Set to 0 to not wake, any value > 0 to wake.|
 
-Note that if the other parameters are not multiples of `update_interval`, the timings will be longer than expected. For example, if `update_interval` is set to 30s and `poll_data_period` is set to 75s, then the effective `poll_data_period` will be 90s.
+Note that while a user is present in the car (recall this is a VCSEC status so is polled for even when the car is asleep), polling will occur at `update_interval` and all sensors updated.
 
 ## Miles vs Km
 
@@ -136,6 +161,8 @@ By default the car reports miles, so this integration returns miles. In home ass
 Use an appropriate BLE app on your phone (eg BLE Scanner) to scan for the BLE devices nearby (so be close to your car). You should see your car in the list of devices (its name will begin with an 'S') with the MAC address displayed.
 Copy and rename `secrets.yaml.example` to `secrets.yaml` and update it with your WiFi credentials (`wifi_ssid` and `wifi_password`) and vehicle VIN (`tesla_vin`) and BLE MAC adress (`ble_mac_address`).
 
+**Note the car's VIN is displayed in the windscreen, the Tesla app and (probably) your registration documents. In my case it begins with "LRW...". It is not the BLE beacon name you get when determining the BLE MAC address.**
+
 **Alternative**
 
 Build the scanner in the [`ble-scanner.yml`](./ble-scanner.yml) file. Once built, it will start scanning and print out the MAC address of any Tesla vehicles found in the logs. Building does take some time.
@@ -147,7 +174,6 @@ The following is the original method. I have never tried this and I do not maint
 1. Build and flash the firmware to your ESP32 device. See the 'Building and flashing ESP32 firmware' section below.
 1. Open the ESPHome logs in Home Assistant and wake it up. Watch for the "Found Tesla vehicle" message, which will contain the BLE MAC address of your vehicle.
     > Note: The vehicle must be in range and awake for the BLE MAC address to be discovered. If the vehicle is not awake, open the Tesla app and run any command
-
     ```log
     [00:00:00][D][tesla_ble_listener:044]: Parsing device: [CC:BB:D1:E2:34:F0]: BLE Device name 1
     [00:00:00][D][tesla_ble_listener:044]: Parsing device: [19:8A:BB:C3:D2:1F]: 
@@ -156,21 +182,140 @@ The following is the original method. I have never tried this and I do not maint
     [00:00:00][D][tesla_ble_listener:044]: Parsing device: [A0:B1:C2:D3:E4:F5]: S1a87a5a75f3df858C
     [00:00:00][I][tesla_ble_listener:054]: Found Tesla vehicle | Name: S1a87a5a75f3df858C | MAC: A0:B1:C2:D3:E4:F5
     ```
-
 1. Clean up your environment before the next step by disabling the `tesla_ble_listener` package in `packages/base.yml` and running
-
     ```sh
     make clean
     ```
-
 ## Building and flashing ESP32 firmware
 
-**Recommended path**
+### Recommended path
 
 For an example ESPHome dashboard, see [`tesla-ble-example.yml`](./tesla-ble.example.yml). Please always start from this. I strongly recommend building this using the ESPHome Device Builder add-on in Home Assistant as this makes building and re-building (eg for updates) much easier.
-If you have limited experience with flashing ESP32 devices and want to get more familiar, check Lazy Tech Geek's video https://www.youtube.com/watch?v=XMpNJgozF-c
 
-**Alternative**
+### Board types
+
+Various board types have been shown to work with this project. Always start from [`tesla-ble-example.yml`](./tesla-ble.example.yml). Some boards require additional/changed yaml as explained below.
+
+#### Standard ESP32 device
+
+The [`tesla-ble-example.yml`](./tesla-ble.example.yml) file is setup to be used with a standard ESP32 device.
+
+#### M5Stack Nano C6
+
+If you want to use a [M5Stack Nano C6](https://docs.m5stack.com/en/core/M5NanoC6), then replace the lines:
+  ```
+  #board: "esp32dev"
+  #variant: "ESP32"
+  ```
+  with
+  ```
+  board: esp32-c6-devkitm-1
+  variant: esp32c6
+  ```
+Optionally, by adding the code below, a RBG LED can be installed which can can be used in your automations (e.g. to visually represent the loading status):
+  ```
+  light:
+    - platform: esp32_rmt_led_strip
+      rgb_order: GRB
+      pin: GPIO20
+      num_leds: 4
+      chipset: ws2812
+      name: "RGB LED"
+      entity_category: diagnostic
+      power_supply: rgbpwr
+  power_supply:
+    - id: 'rgbpwr'
+      enable_on_boot: true
+      pin: GPIO19
+      enable_time: 10ms
+      keep_on_time: 10ms
+  ```
+#### ESP32 C3 Super Mini
+
+If you want to use a [ESP32 C3 Super Mini](https://www.espboards.dev/esp32/esp32-c3-super-mini/), then replace the lines:
+  ```
+  #board: "esp32dev"
+  #variant: "ESP32"
+  ```
+  with
+  ```
+  board: "esp32-c3-devkitm-1"
+  variant: "ESP32C3"
+  ```
+Add the following:
+  ```
+  # Enhanced reconnect behavior
+  reboot_timeout: 15min  # Reboot if no connection after 15 minutes
+  power_save_mode: none  # Better reliability over power saving
+  ```
+You can configure the LED and buttons to perform actions as required. This is an example with a button used to open the charge flap and another to reboot the device.
+  ```
+light:
+  - platform: status_led
+    name: "Status LED"
+    id: esp_status_led
+    icon: "mdi:alarm-light"
+    pin:
+      number: GPIO8
+      inverted: true
+      ignore_strapping_warning: true 
+    restore_mode: ALWAYS_OFF
+
+# Define the button on GPIO10
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO10
+      mode: INPUT
+      inverted: true      # Button will be active LOW (pressed when the pin is low)
+    name: "MENU"
+    icon: "mdi:radiobox-blank"
+    on_press:
+      - light.toggle: esp_status_led  # Toggle the internal LED when the button is pressed
+    on_double_click:
+      - logger.log: "Double-click detected on MENU button! Rebooting..."
+      - delay: 500ms
+      - button.press: reboot_device
+# Define the button on GPIO0
+  - platform: gpio
+    pin:
+      number: GPIO0
+      mode: INPUT
+      inverted: true      # Button will be active LOW (pressed when the pin is low)
+    name: "ENTER"
+    icon: "mdi:car-door-lock-open"
+    on_press:
+      - light.toggle: esp_status_led  # Toggle the internal LED when the button is pressed
+# Define the button on GPIO1
+  - platform: gpio
+    pin:
+      number: GPIO1
+      mode: INPUT
+      inverted: true      # Button will be active LOW (pressed when the pin is low)
+    name: "DOWN"
+    icon: "mdi:radiobox-blank"
+    on_press:
+      - light.toggle: esp_status_led  # Toggle the internal LED when the button is pressed
+# Define the button on GPIO3
+  - platform: gpio
+    pin:
+      number: GPIO3
+      mode: INPUT
+      inverted: true      # Button will be active LOW (pressed when the pin is low)
+    name: "ESC"
+    icon: "mdi:ev-plug-type2"
+    on_press:
+      - light.toggle: esp_status_led  # Toggle the internal LED when the button is pressed
+    on_double_click: 
+      - lambda: id(tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage (VCSEC_ClosureMoveRequest_chargePort_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_OPEN);
+
+button:
+  - platform: restart
+    name: "Reboot Device"
+    id: reboot_device
+  ```
+If you have limited experience with flashing ESP32 devices and want to get more familiar, check Lazy Tech Geek's video https://www.youtube.com/watch?v=XMpNJgozF-c
+### Alternative build method using make
 
 The following are instructions if you use `make`. I have never used these so cannot vouch for their accuracy (as I said above, it's far easier to use the ESPHome Device Builder add-on in Home Assistant). I welcome any feedback on improving/correcting these instructions - please raise an issue for it.
 
