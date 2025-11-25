@@ -232,3 +232,33 @@ The following are instructions if you use `make`. I have never used these so can
 [last-commit-shield]: https://img.shields.io/github/last-commit/PedroKTFC/esphome-tesla-ble
 [platform-shield]: https://img.shields.io/badge/platform-Home%20Assistant%20&%20ESPHome-blue
 
+## Managing more than 1 vehicle
+
+- Define in the common secrets.yaml file a pair of `mac address`/`vin` parameters per vehicle. </br>E.g. `ble_mac_address_car1`/`tesla_vin_car1` and `ble_mac_address_car2`/`tesla_vin_car2`
+- **Important:** do not delete the parameters `tesla_vin` and `ble_mac_address` in the secrets.yaml file but assign them a dummy value. </br>E.g. `ble_mac_address: "A0:B1:C2:D3:E4:F5"`, `tesla_vin: "LRW30123456789ABC"`
+- The respective part of the secrets.yaml file should then look like this:
+
+  ```
+  ...
+  ble_mac_address: "A0:B1:C2:D3:E4:F5"
+  tesla_vin: "LRW30123456789ABC" # mock VIN example (it is NOT the BLE beacon name!)make compile BOARD=m5stack-nanoc6
+  ble_mac_address_car1: "mac address of your car 1"
+  tesla_vin_car1: "vin of your car 1"
+  ble_mac_address_car2: "mac address of your car 2"
+  tesla_vin_car2: "vin of your car 2"
+  ...
+  ```
+- Use an individual ESP32 device per vehicle.
+- Create a separate yaml config file with a unique file name per vehicle (always start from the tesla-ble.example.yml file).
+- Ensure that in the substitutions section the name, mac address and vin refer to the respective vehicle. 
+- The substitutions part of the configuration file should then look like this:
+  ```
+  substitutions:
+    ...
+    friendly_name: Tesla BLE CAR 1
+    device_name: tesla-ble-car1
+    device_description: Tesla BLE CAR 1
+    ble_mac_address: !secret ble_mac_address_car1
+    tesla_vin: !secret tesla_vin_car1
+    ...
+  ```
