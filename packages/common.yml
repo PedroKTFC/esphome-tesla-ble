@@ -17,7 +17,7 @@ binary_sensor:
     device_class: connectivity
     name: "BLE Status"
     entity_category: diagnostic
-    timeout: 5s
+    timeout: $ble_presence_timeout
 
 text_sensor:
   - platform: version
