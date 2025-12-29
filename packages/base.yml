@@ -5,6 +5,7 @@ substitutions:
   flash_size: "4MB"
   BLE_library: "https://github.com/PedroKTFC/tesla-ble.git"
   tesla_ble_component: "github://PedroKTFC/esphome-tesla-ble"
+  ble_presence_timeout: 5s
 
 esphome:
   project:
