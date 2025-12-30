@@ -38,6 +38,10 @@ CONF_IS_CLIMATE_ON = "is_climate_on"
 CONF_INTERNAL_TEMP = "internal_temp"
 CONF_EXTERNAL_TEMP = "external_temp"
 CONF_WINDOWS_STATE = "windows_state"
+CONF_TPMS_PRESSURE_FL ="tpms_pressure_fl"
+CONF_TPMS_PRESSURE_FR ="tpms_pressure_fr"
+CONF_TPMS_PRESSURE_RL ="tpms_pressure_rl"
+CONF_TPMS_PRESSURE_RR ="tpms_pressure_rr"
 CONF_POST_WAKE_POLL_TIME = "post_wake_poll_time" # How long to poll for data after car awakes (s)
 CONF_POLL_DATA_PERIOD = "poll_data_period" # Normal period when polling for data when not asleep (s)
 CONF_POLL_ASLEEP_PERIOD = "poll_asleep_period" # Period to poll for data when asleep (s)
@@ -146,6 +150,22 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_EXTERNAL_TEMP): sensor.sensor_schema(
                 icon="mdi:sun-thermometer-outline", device_class=sensor.DEVICE_CLASS_TEMPERATURE,
                 accuracy_decimals=1, unit_of_measurement="°C"
+            ).extend(),
+            cv.Optional(CONF_TPMS_PRESSURE_FL): sensor.sensor_schema(
+                icon="mdi:tire", device_class=sensor.DEVICE_CLASS_PRESSURE,
+                accuracy_decimals=1, unit_of_measurement="bar"
+            ).extend(),
+            cv.Optional(CONF_TPMS_PRESSURE_FR): sensor.sensor_schema(
+                icon="mdi:tire", device_class=sensor.DEVICE_CLASS_PRESSURE,
+                accuracy_decimals=1, unit_of_measurement="bar"
+            ).extend(),
+            cv.Optional(CONF_TPMS_PRESSURE_RL): sensor.sensor_schema(
+                icon="mdi:tire", device_class=sensor.DEVICE_CLASS_PRESSURE,
+                accuracy_decimals=1, unit_of_measurement="bar"
+            ).extend(),
+            cv.Optional(CONF_TPMS_PRESSURE_RR): sensor.sensor_schema(
+                icon="mdi:tire", device_class=sensor.DEVICE_CLASS_PRESSURE,
+                accuracy_decimals=1, unit_of_measurement="bar"
             ).extend(),
         }
     )
@@ -263,3 +283,19 @@ async def to_code(config):
         conf = config[CONF_EXTERNAL_TEMP]
         ss = await sensor.new_sensor(conf)
         cg.add(var.set_sensor_external_temp_state(ss))
+    if CONF_TPMS_PRESSURE_FL in config:
+        conf = config[CONF_TPMS_PRESSURE_FL]
+        ss = await sensor.new_sensor(conf)
+        cg.add(var.set_sensor_tpms_pressure_fl_state(ss))
+    if CONF_TPMS_PRESSURE_FR in config:
+        conf = config[CONF_TPMS_PRESSURE_FR]
+        ss = await sensor.new_sensor(conf)
+        cg.add(var.set_sensor_tpms_pressure_fr_state(ss))
+    if CONF_TPMS_PRESSURE_RL in config:
+        conf = config[CONF_TPMS_PRESSURE_RL]
+        ss = await sensor.new_sensor(conf)
+        cg.add(var.set_sensor_tpms_pressure_rl_state(ss))
+    if CONF_TPMS_PRESSURE_RR in config:
+        conf = config[CONF_TPMS_PRESSURE_RR]
+        ss = await sensor.new_sensor(conf)
+        cg.add(var.set_sensor_tpms_pressure_rr_state(ss))
