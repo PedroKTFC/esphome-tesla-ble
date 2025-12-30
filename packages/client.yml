@@ -89,7 +89,23 @@ tesla_ble_vehicle:
   windows_state:
     id: "windows_state"
     name: "Windows"
-      
+  tpms_pressure_fl:
+    id: "tpms_pressure_fl"
+    name: "Tyre pressure front left"
+    disabled_by_default: true
+  tpms_pressure_fr:
+    id: "tpms_pressure_fr"
+    name: "Tyre pressure front right"
+    disabled_by_default: true
+  tpms_pressure_rl:
+    id: "tpms_pressure_rl"
+    name: "Tyre pressure rear left"
+    disabled_by_default: true
+  tpms_pressure_rr:
+    id: "tpms_pressure_rr"
+    name: "Tyre pressure rear right"
+    disabled_by_default: true
+
 button:
   - platform: template
     id: ble_pair
@@ -270,8 +286,6 @@ switch:
             - lambda: id(tesla_ble_vehicle_id)->wake_on_boot_ = 1;
           else:
             - lambda: id(tesla_ble_vehicle_id)->wake_on_boot_ = 0;
-  
-
 
   - platform: ble_client
     id: sw_ble_connection
