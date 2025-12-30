@@ -35,6 +35,7 @@ typedef enum BLE_CarServer_VehicleAction_E
     GET_DRIVE_STATE,
     GET_LOCATION_STATE,
     GET_CLOSURES_STATE,
+    GET_TYRES_STATE,
     SET_CHARGING_SWITCH,
     SET_CHARGING_AMPS,
     SET_CHARGING_LIMIT,
@@ -99,6 +100,7 @@ namespace esphome
             {GET_DRIVE_STATE,                  "getDriveState",             GetVehicleDataMessage, CarServer_GetVehicleData_getDriveState_tag,                     Invalid},
             {GET_LOCATION_STATE,               "getLocationState",          GetVehicleDataMessage, CarServer_GetVehicleData_getLocationState_tag,                  Invalid},
             {GET_CLOSURES_STATE,               "getClosuresState",          GetVehicleDataMessage, CarServer_GetVehicleData_getClosuresState_tag,                  Invalid},
+            {GET_TYRES_STATE,                  "getTyresState",             GetVehicleDataMessage, CarServer_GetVehicleData_getTirePressureState_tag,              Invalid},
             {SET_CHARGING_SWITCH,              "setChargingSwitch",         VehicleActionMessage,  CarServer_VehicleAction_chargingStartStopAction_tag,            GetChargeState},
             {SET_CHARGING_AMPS,                "setChargingAmps",           VehicleActionMessage,  CarServer_VehicleAction_setChargingAmpsAction_tag,              GetChargeState},
             {SET_CHARGING_LIMIT,               "setChargingLimit",          VehicleActionMessage,  CarServer_VehicleAction_chargingSetLimitAction_tag,             GetChargeState},
@@ -321,6 +323,10 @@ namespace esphome
                     outsideTempStateSensor->publish_state (NAN);
                     ChargeEnergyAddedSensor->publish_state (NAN);
                     ChargeDistanceAddedSensor->publish_state (NAN);
+                    TpmsPressureFrSensor->publish_state (NAN);
+                    TpmsPressureFlSensor->publish_state (NAN);
+                    TpmsPressureRlSensor->publish_state (NAN);
+                    TpmsPressureRrSensor->publish_state (NAN);
                     isBootOpenSensor->invalidate_state ();
                     isFrunkOpenSensor->invalidate_state ();
                     windowsStateSensor->invalidate_state ();
@@ -411,6 +417,22 @@ namespace esphome
             {
                 ChargeDistanceAddedSensor->publish_state (dist);
             }
+            void setTpmsTyrePressureFl (float pressure)
+            {
+                TpmsPressureFlSensor->publish_state (pressure);
+            }
+            void setTpmsTyrePressureFr (float pressure)
+            {
+                TpmsPressureFrSensor->publish_state (pressure);
+            }
+            void setTpmsTyrePressureRl (float pressure)
+            {
+                TpmsPressureRlSensor->publish_state (pressure);
+            }
+            void setTpmsTyrePressureRr (float pressure)
+            {
+                TpmsPressureRrSensor->publish_state (pressure);
+            }
 
             void set_text_sensor_shift_state (text_sensor::TextSensor *s)
             {
@@ -496,6 +518,22 @@ namespace esphome
             {
                 outsideTempStateSensor = static_cast<sensor::Sensor *>(s);
             }
+            void set_sensor_tpms_pressure_fl_state (sensor::Sensor *s)
+            {
+                TpmsPressureFlSensor = static_cast<sensor::Sensor *>(s);
+            }
+            void set_sensor_tpms_pressure_fr_state (sensor::Sensor *s)
+            {
+                TpmsPressureFrSensor = static_cast<sensor::Sensor *>(s);
+            }
+            void set_sensor_tpms_pressure_rl_state (sensor::Sensor *s)
+            {
+                TpmsPressureRlSensor = static_cast<sensor::Sensor *>(s);
+            }
+            void set_sensor_tpms_pressure_rr_state (sensor::Sensor *s)
+            {
+                TpmsPressureRrSensor = static_cast<sensor::Sensor *>(s);
+            }
 
             std::string lookup_shift_state (int shift_state)
             {
@@ -578,6 +616,10 @@ namespace esphome
             sensor::Sensor *insideTempStateSensor;
             sensor::Sensor *ChargeEnergyAddedSensor;
             sensor::Sensor *ChargeDistanceAddedSensor;
+            sensor::Sensor *TpmsPressureFlSensor;
+            sensor::Sensor *TpmsPressureFrSensor;
+            sensor::Sensor *TpmsPressureRlSensor;
+            sensor::Sensor *TpmsPressureRrSensor;
 
             std::vector<unsigned char> ble_read_buffer_;
 
