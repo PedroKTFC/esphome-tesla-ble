@@ -1,0 +1,133 @@
+# including this file will regionalize the entities to Hungarian:
+# - localize all names to Hungarian terminology
+# - use km. instead of mi for distance units by default
+
+tesla_ble_vehicle:
+  is_asleep:
+    name: "Alvó állapotban"
+  is_user_present:
+    name: "Személy észlelve"
+  is_unlocked:
+    name: "Nyitva van"
+  is_charge_flap_open:
+    icon: mdi:ev-plug-ccs2
+    name: "Töltőnyílás"
+  is_boot_open:
+    name: "Csomagtartó hátsó"
+  is_frunk_open:
+    name: "Csomagtartó első"
+  shift_state:
+    name: "Váltó pozíció"
+  defrost_state:
+    name: "Fagymentesítés"
+  charge_state:
+    name: "Töltöttségi szint"
+  odometer:
+    name: "Km. óra állás"
+    filters:
+      - multiply: 1.609344 # in hundredths of a mile but, multiply by 0.01 alredy in package file
+    unit_of_measurement: km
+  charge_current:
+    name: "Töltési áram"
+  charge_voltage:
+    name: "Töltési feszültség"  
+  charge_power:
+    name: "Töltési teljesítmény"
+  charge_energy_added:
+    name: "Vételezett energia"
+  charge_distance_added:
+    name: "Hatótáv növekedés"
+    filters:
+      - multiply: 1.609344 # miles
+    unit_of_measurement: km
+  max_soc:
+    name: "Töltési limit"
+  max_amps:
+    name: "Töltési áram limit"
+  mins_to_limit:
+    name: "Idő a töltés befejezéséig"
+  battery_range:
+    name: "Hatótáv"
+    filters:
+      - multiply: 1.609344 # miles
+    unit_of_measurement: km
+  charging_state:
+    name: "Töltési állapot"
+  last_update:
+    name: "Utoljára frissült"
+  is_climate_on:
+    name: "Klíma"
+  internal_temp:
+    name: "Hőmérséklet bent"
+  external_temp:
+    name: "Hőmérséklet kint"
+  windows_state:
+    name: "Ablakok"
+
+button:
+  - id: !extend ble_pair
+    name: "BLE kulcspárosítás"
+  - id: !extend btn_wake_up
+    name: "Felébresztés"
+  - id: !extend btn_flash_light
+    name: "Fénykürt"
+  - id: !extend btn_sound_horn
+    name: "Dudaszó"
+  - id: !extend btn_unlock_charge_port
+    name: "Töltőnyílás feloldása"
+  - id: !extend btn_unlatch_driver_door
+    name: "Vezetőajtó kinyitás"
+  - id: !extend btn_regenerate_key
+    name: "Kulcs újragenerálása"
+  - id: !extend btn_force_data_update
+    name: "Kézi adatfrissítés"
+
+sensor:
+  - id: !extend ble_signal
+    name: "BLE jelszint"
+
+switch:
+  - id: !extend sw_charger
+    name: "Töltés"
+  - id: !extend sw_sentry_mode
+    name: "Őrszem"
+  - id: !extend sw_climate
+    name: "Klíma"
+  - id: !extend sw_steering_wheel_heat
+    name: "Kormányfűtés"
+  - id: !extend sw_defrost_car
+    name: "Fagymentesítés"
+  - id: !extend sw_ble_connection
+    name: "BLE kapcsolat"
+  - id: !extend fast_poll_if_unlocked
+    name: "Lekérdezés gyors nyitott zárnál"
+
+lock:
+  - id: !extend lock_car
+    name: "Autó zár"
+
+cover:
+  - id: !extend cov_vent
+    name: "Szellőztetés"
+  - id: !extend cov_charge_port
+    name: "Töltőnyílás"
+  - id: !extend cov_boot
+    name: "Csomagtartó hátsó"
+  - id: !extend cov_frunk
+    name: "Csomagtartó első"
+    
+number:
+  - id: !extend charging_amps
+    name: "Töltési áram"
+  - id: !extend charging_limit
+    name: "Töltési limit"
+  - id: !extend post_wake_poll_time
+    name: "Lekérdezés gyak. felébresztés után"
+  - id: !extend poll_data_period
+    name: "Lekérdezés gyak. alapértelmezett"
+  - id: !extend poll_asleep_period
+    name: "Lekérdezés gyak. alvó állapotban"
+  - id: !extend poll_charging_period
+    name: "Lekérdezés gyak. töltés közben"
+  - id: !extend ble_disconnected_min_time
+    name: "BLE lecsatlakozott állapot min idő"

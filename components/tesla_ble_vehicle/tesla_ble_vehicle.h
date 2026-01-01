@@ -222,7 +222,8 @@ namespace esphome
             void set_vin(const char *vin);
             void load_polling_parameters (const int post_wake_poll_time, const int poll_data_period,
                                           const int poll_asleep_period, const int poll_charging_period,
-                                          const int ble_disconnected_min_time, const int fast_poll_if_unlocked);
+                                          const int ble_disconnected_min_time, const int fast_poll_if_unlocked,
+                                          const int wake_on_boot);
             void process_command_queue();
             void process_response_queue();
             void process_ble_read_queue();
@@ -249,6 +250,7 @@ namespace esphome
             int sendSessionInfoRequest(UniversalMessage_Domain domain);
             int sendVCSECInformationRequest(void);
             void enqueueVCSECInformationRequest(bool force = false);
+            int wake_on_boot_ = 0; // != 0 wakes car on device boot
 
             int writeBLE(const unsigned char *message_buffer, size_t message_length,
                          esp_gatt_write_type_t write_type, esp_gatt_auth_req_t auth_req);

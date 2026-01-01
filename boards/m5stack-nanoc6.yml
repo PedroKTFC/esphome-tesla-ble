@@ -1,3 +1,12 @@
+##--- NOTE -------------------------------------------------------------##
+# This file is not needed and not used in this repo configuration.       #
+# It was taken over by forking the original yoziru repo.                 #
+# In case a M5stack Nano C6 is used, nescessary config can be made in    #
+#   the root yaml file (tesla-ble.example.yml) as described in the       #
+#   read.me.                                                             #
+##----------------------------------------------------------------------##
+
+
 substitutions:
   board: esp32-c6-devkitm-1
   variant: esp32c6

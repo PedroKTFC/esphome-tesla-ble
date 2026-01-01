@@ -939,7 +939,7 @@ namespace esphome
       *   are no longer available. Therefore have to handle disconnections outside of the main loop.
       */
       if (ble_disconnected_min_time_ != 0)
-      { // Only delay setting to Unkown if not zero
+      { // Only delay setting to Unknown if not zero
         if ((ble_disconnected_ == 1) and ((millis() - ble_disconnected_time_) > ble_disconnected_min_time_))
         { // Only make sensors Unknown if ble disconnected continuously for the configured time
           this->setSensors(false);
@@ -966,14 +966,28 @@ namespace esphome
         *     but resumes while the car has been awake continuously (otherwise we would never notice it's charging again). This period
         *     should be chosen to be long enough so that the car will fall asleep if nothing else is happening to keep it awake.
         */
-        if (esp32_just_started_ == 2) // Allow 2 cycles before starting so everything initialised
+        switch (esp32_just_started_)
         {
-          // If the ESP32 has just started, do a wake even if already awake to ensure get an initial poll of its data
-          wakeVehicle(); // wake will cause poll assuming car available
+        case 2:
+          // If the ESP32 has just started and wake on boot wanted, wake car even if already awake to get an initial poll of its data
+          if (wake_on_boot_ > 0)
+          {
+            wakeVehicle(); // wake will cause poll assuming car available
+          }
           esp32_just_started_++;
-        } else 
-        {
+          ESP_LOGI (TAG, "Polling parameters: post_wake_poll_time_ %i, poll_data_period_  %i, poll_asleep_period_ %i, poll_charging_period_  %i, ble_disconnected_min_time_  %i, fast_poll_if_unlocked_ %i, wake_on_boot_ %i",
+            post_wake_poll_time_,
+            poll_data_period_,
+            poll_asleep_period_,
+            poll_charging_period_,
+            ble_disconnected_min_time_,
+            fast_poll_if_unlocked_,
+            wake_on_boot_);
+          break;
+        case 0:
+        case 1:
           esp32_just_started_++;
+        // Beyond 2 this is no longer relevant
         }
         if (!this->isAsleepSensor->state and previous_asleep_state_) // Remember, true means asleep
         {
@@ -1200,7 +1214,8 @@ namespace esphome
 
     void TeslaBLEVehicle::load_polling_parameters (const int post_wake_poll_time, const int poll_data_period,
                                                    const int poll_asleep_period, const int poll_charging_period,
-                                                   const int ble_disconnected_min_time, const int fast_poll_if_unlocked)
+                                                   const int ble_disconnected_min_time, const int fast_poll_if_unlocked,
+                                                   const int wake_on_boot)
     {
       // All timings are in milliseconds
       post_wake_poll_time_ = post_wake_poll_time * 1000;
@@ -1209,6 +1224,7 @@ namespace esphome
       poll_charging_period_ = poll_charging_period * 1000;
       ble_disconnected_min_time_ = ble_disconnected_min_time * 1000;
       fast_poll_if_unlocked_ = fast_poll_if_unlocked;
+      wake_on_boot_ = wake_on_boot;
     }
 
     void TeslaBLEVehicle::regenerateKey()

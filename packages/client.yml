@@ -17,7 +17,8 @@ tesla_ble_vehicle:
   poll_asleep_period: 60 # Period to poll for data when asleep (s)
   poll_charging_period: 10 # Period to poll for data when charging (s)
   ble_disconnected_min_time: 300 # Minimum time BLE must be disconnected before sensors are Unknwon (s)
-  fast_poll_if_unlocked: 1 # if != 0, fast polls are enabled when unlocked
+  fast_poll_if_unlocked: 0 # if != 0, fast polls are enabled when unlocked
+  wake_on_boot: 0 # != 0 wakes car on device boot
 
   is_asleep:
     name: "Asleep"
@@ -99,30 +100,35 @@ button:
     entity_category: diagnostic
 
   - platform: template
+    id: btn_wake_up
     name: Wake up
     icon: mdi:sleep-off
     on_press:
     - lambda: id(tesla_ble_vehicle_id)->wakeVehicle();
 
   - platform: template
+    id: btn_flash_light
     name: Flash light
     icon: mdi:car-light-high
     on_press:
       - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (FLASH_LIGHT, 0);
 
   - platform: template
+    id: btn_sound_horn
     name: Sound horn
     icon: mdi:bugle
     on_press:
       - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (SOUND_HORN, 0);
 
   - platform: template
+    id: btn_unlock_charge_port
     name: Unlock charge port
     icon: mdi:ev-plug-ccs2
     on_press:
       - lambda: id(tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage (VCSEC_ClosureMoveRequest_chargePort_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_OPEN);
 
   - platform: template
+    id: btn_unlatch_driver_door
     name: Unlatch driver door
     icon: mdi:car-door
     on_press:
@@ -130,6 +136,7 @@ button:
     disabled_by_default: true
 
   - platform: template
+    id: btn_regenerate_key
     name: Regenerate key
     icon: mdi:key-change
     on_press:
@@ -138,6 +145,7 @@ button:
     disabled_by_default: true
 
   - platform: template
+    id: btn_force_data_update
     name: Force data update
     icon: mdi:database-sync
     on_press:
@@ -156,6 +164,7 @@ sensor:
 
 switch:
   - platform: template
+    id: sw_charger
     name: "Charger"
     optimistic: true
     icon: mdi:lightning-bolt
@@ -172,6 +181,7 @@ switch:
       - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(SET_CHARGING_SWITCH, 0);
 
   - platform: template
+    id: sw_sentry_mode
     name: "Sentry mode"
     optimistic: true
     icon: mdi:record-circle-outline
@@ -183,6 +193,7 @@ switch:
       - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(SET_SENTRY_SWITCH, 0);
   
   - platform: template
+    id: sw_climate
     name: "Climate"
     optimistic: true
     icon: mdi:fan
@@ -199,6 +210,7 @@ switch:
       - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(SET_HVAC_SWITCH, 0);
 
   - platform: template
+    id: sw_steering_wheel_heat
     name: "Steering wheel heat"
     optimistic: true
     icon: mdi:steering
@@ -210,6 +222,7 @@ switch:
       - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(SET_HVAC_STEERING_HEATER_SWITCH, 0);
   
   - platform: template
+    id: sw_defrost_car
     name: Defrost car
     optimistic: true
     icon: mdi:snowflake-melt
@@ -223,14 +236,52 @@ switch:
       - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (DEFROST_CAR, 1);
     turn_off_action:
       - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (DEFROST_CAR, 0);
-      
+
+  - platform: template
+    id: fast_poll_if_unlocked
+    name: "Fast poll if unlocked"
+    optimistic: true
+    icon: mdi:car-door-lock-open
+    entity_category: config
+    restore_mode: RESTORE_DEFAULT_OFF
+    disabled_by_default: true
+    on_state:
+      - if:
+          condition:
+            lambda: 'return x;'
+          then:
+            - lambda: id(tesla_ble_vehicle_id)->fast_poll_if_unlocked_ = 1;
+          else:
+            - lambda: id(tesla_ble_vehicle_id)->fast_poll_if_unlocked_ = 0;
+
+  - platform: template
+    id: wake_on_boot
+    name: "Wake on boot"
+    optimistic: true
+    icon: mdi:sleep-off
+    entity_category: config
+    restore_mode: RESTORE_DEFAULT_OFF
+    disabled_by_default: true
+    on_state:
+      - if:
+          condition:
+            lambda: 'return x;'
+          then:
+            - lambda: id(tesla_ble_vehicle_id)->wake_on_boot_ = 1;
+          else:
+            - lambda: id(tesla_ble_vehicle_id)->wake_on_boot_ = 0;
+  
+
+
   - platform: ble_client
+    id: sw_ble_connection
     ble_client_id: ble_tesla_id
     name: "BLE Connection"
     entity_category: diagnostic
 
 lock:
   - platform: template
+    id: lock_car
     name: "Lock car"
     optimistic: true
     icon: mdi:lock
@@ -249,6 +300,7 @@ lock:
 
 cover:
   - platform: template
+    id: cov_vent
     name: "Vent"
     optimistic: false #### true
     icon: mdi:car-door
@@ -267,6 +319,7 @@ cover:
           id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (SET_WINDOWS_SWITCH, 1);
 
   - platform: template
+    id: cov_charge_port
     name: "Charge port"
     optimistic: true
     device_class: door
@@ -284,6 +337,7 @@ cover:
       - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(SET_CLOSE_CHARGE_PORT_DOOR,1);
   
   - platform: template
+    id: cov_boot
     name: "Boot"
     optimistic: true
     device_class: door
@@ -301,6 +355,7 @@ cover:
       - lambda: id(tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage (VCSEC_ClosureMoveRequest_rearTrunk_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_CLOSE);
 
   - platform: template
+    id: cov_frunk
     name: "Frunk"
     optimistic: true
     device_class: door
@@ -335,7 +390,7 @@ number:
       {
         return id(max_amps).state;
       }
-      else return (0); 
+      else return (0);
   - platform: template
     name: "Charging limit"
     id: charging_limit
@@ -355,5 +410,85 @@ number:
       {
         return id(max_soc).state;
       }
-      else return (0); 
-        
+      else return (0);
+
+  - platform: template
+    id: post_wake_poll_time
+    name: "Post wake poll time"
+    icon: mdi:timelapse
+    min_value: 0
+    max_value: 1000
+    mode: box
+    step: 1
+    restore_value: true
+    initial_value: 300
+    optimistic: true
+    disabled_by_default: true
+    entity_category: config
+    on_value:
+      - lambda: |-
+          id(tesla_ble_vehicle_id)->post_wake_poll_time_ = x * 1000;
+  - platform: template
+    id: poll_data_period
+    name: "Poll data period"
+    icon: mdi:timer-outline
+    min_value: 0
+    max_value: 1000
+    mode: box
+    step: 1
+    restore_value: true
+    initial_value: 60
+    optimistic: true
+    disabled_by_default: true
+    entity_category: config
+    on_value:
+      - lambda: |-
+          id(tesla_ble_vehicle_id)->poll_data_period_ = x * 1000;
+  - platform: template
+    id: poll_asleep_period
+    name: "Poll asleep period"
+    icon: mdi:bed-clock
+    min_value: 0
+    max_value: 1000
+    mode: box
+    step: 1
+    restore_value: true
+    initial_value: 60
+    optimistic: true
+    disabled_by_default: true
+    entity_category: config
+    on_value:
+      - lambda: |-
+          id(tesla_ble_vehicle_id)->poll_asleep_period_ = x * 1000;
+  - platform: template
+    id: poll_charging_period
+    name: "Poll charging period"
+    icon: mdi:timer-sync-outline
+    min_value: 0
+    max_value: 1000
+    mode: box
+    step: 1
+    restore_value: true
+    initial_value: 10
+    optimistic: true
+    disabled_by_default: true
+    entity_category: config
+    on_value:
+      - lambda: |-
+          id(tesla_ble_vehicle_id)->poll_charging_period_ = x * 1000;
+  - platform: template
+    id: ble_disconnected_min_time
+    name: "BLE disconnected min time"
+    icon: mdi:bluetooth-connect
+    min_value: 0
+    max_value: 1000
+    mode: box
+    step: 1
+    restore_value: true
+    initial_value: 300
+    optimistic: true
+    disabled_by_default: true
+    entity_category: config
+    on_value:
+      - lambda: |-
+          id(tesla_ble_vehicle_id)->ble_disconnected_min_time_ = x * 1000;
