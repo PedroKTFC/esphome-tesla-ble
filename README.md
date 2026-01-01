@@ -88,6 +88,7 @@ There are two categories, those available even when asleep and those only when a
   - Odometer (miles)
   - Range (miles)
   - Shift state (eg Invalid, R, N, D)
+  - Tyre pressures (bar). The four sensors - front left, front right, rear left, rear right - are disabled by default. 
   - Windows open/closed
 
 ### Diagnostics
@@ -98,6 +99,10 @@ These are the diagnostic button actions:
 - Pair BLE key with vehicle
 - Regenerate key - will require repairing
 - Restart ESP board
+
+There are also several self-explanatory sensors. The `BLE Status` sensor reports if the ESP board is connected to the car. By default this reports the car as disconnected if the car isn't seen for more than 5 seconds.
+> [!TIP]
+> There is a subsitution value `ble_presence_timeout` available to change this if you wish. For example, to change it to two  minutes use `  ble_presence_timeout: 120s`.
 
 ### Configuration
 
@@ -141,9 +146,9 @@ There are several parameters that determine the polling activity which are descr
 
 Note that while a user is present in the car (recall this is a VCSEC status so is polled for even when the car is asleep), polling will occur at `update_interval` and all sensors updated.
 
-## Miles vs Km
+## Miles vs Km, bar vs psi etc
 
-By default the car reports miles, so this integration returns miles. In home assistant you can edit the sensor and select the preferred unit of measurement there.
+By default the car reports distances in miles and pressures in bars, so this integration returns these units. In Home Assistant you can edit any sensor and select the preferred unit of measurement there.
 
 ## Pre-requisites
 
@@ -259,6 +264,7 @@ The following are instructions if you use `make`. I have never used these so can
 [releases]: https://github.com/Blackymas/PedroKTFC/esphome-tesla-ble
 [last-commit-shield]: https://img.shields.io/github/last-commit/PedroKTFC/esphome-tesla-ble
 [platform-shield]: https://img.shields.io/badge/platform-Home%20Assistant%20&%20ESPHome-blue
+
 
 
 
