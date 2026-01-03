@@ -1048,6 +1048,7 @@ namespace esphome
           sendCarServerVehicleActionMessage (GET_DRIVE_STATE, 0);
           sendCarServerVehicleActionMessage (GET_CLIMATE_STATE, 0);
           sendCarServerVehicleActionMessage (GET_CLOSURES_STATE, 0);
+          sendCarServerVehicleActionMessage (GET_TYRES_STATE, 0);
           if ((car_just_woken_ != 0) and ((millis() - car_wake_time_) > post_wake_poll_time_))
           {
             car_just_woken_ = 0;
@@ -1810,6 +1811,13 @@ namespace esphome
               carserver_response.response_msg.vehicleData.closures_state.optional_window_open_driver_rear.window_open_driver_rear or
               carserver_response.response_msg.vehicleData.closures_state.optional_window_open_passenger_rear.window_open_passenger_rear
               );
+          }
+          else if (carserver_response.response_msg.vehicleData.has_tire_pressure_state)
+          {
+            setTpmsTyrePressureFl (carserver_response.response_msg.vehicleData.tire_pressure_state.optional_tpms_pressure_fl.tpms_pressure_fl);
+            setTpmsTyrePressureFr (carserver_response.response_msg.vehicleData.tire_pressure_state.optional_tpms_pressure_fr.tpms_pressure_fr);
+            setTpmsTyrePressureRl (carserver_response.response_msg.vehicleData.tire_pressure_state.optional_tpms_pressure_rl.tpms_pressure_rl);
+            setTpmsTyrePressureRr (carserver_response.response_msg.vehicleData.tire_pressure_state.optional_tpms_pressure_rr.tpms_pressure_rr);
           }
           break;
         case 0: // No data in the response but presumably otherwise ok (controls)
