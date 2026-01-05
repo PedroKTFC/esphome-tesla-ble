@@ -89,6 +89,7 @@ tesla_ble_vehicle:
     id: "is_climate_on"
     name: "Climate"
   internal_temp:
+    id: "internal_temp"
     name: "Interior"
   external_temp:
     id: "external_temp"
