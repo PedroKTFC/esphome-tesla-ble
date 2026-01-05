@@ -63,6 +63,14 @@ tesla_ble_vehicle:
     name: "Hőmérséklet kint"
   windows_state:
     name: "Ablakok"
+  tpms_pressure_fl:
+    name: "Guminyomás bal első"
+  tpms_pressure_fr:
+    name: "Guminyomás jobb első"
+  tpms_pressure_rl:
+    name: "Guminyomás bal hátsó"
+  tpms_pressure_rr:
+    name: "Guminyomás jobb hátsó"
 
 button:
   - id: !extend ble_pair
