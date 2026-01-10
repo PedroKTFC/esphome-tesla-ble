@@ -21,8 +21,10 @@ tesla_ble_vehicle:
   wake_on_boot: 0 # != 0 wakes car on device boot
 
   is_asleep:
+    id: "is_asleep"
     name: "Asleep"
   is_user_present:
+    id: "is_user_present"
     name: "User presence"
   is_unlocked:
     id: "is_unlocked"
@@ -37,6 +39,7 @@ tesla_ble_vehicle:
     id: "is_frunk_open"
     name: "Frunk"
   shift_state:
+    id: "shift_state"
     name: "Shift state"
   defrost_state:
     id: "defrost_state"
@@ -45,6 +48,7 @@ tesla_ble_vehicle:
     id: "charge_state"
     name: "Charge level"
   odometer:
+    id: "odometer"
     name: "Odometer"
     filters:
       - multiply: 0.01 # Odometer is in hundredths of a mile (can use this to convert to km)
@@ -73,23 +77,27 @@ tesla_ble_vehicle:
     id: "mins_to_limit"
     name: "Minutes to limit"
   battery_range:
+    id: "battery_range"
     name: "Range"
   charging_state:
     id: "charging_state"
     name: "Charging state"
   last_update:
+    id: "last_update"
     name: "Last update"
   is_climate_on:
     id: "is_climate_on"
     name: "Climate"
   internal_temp:
+    id: "internal_temp"
     name: "Interior"
   external_temp:
+    id: "external_temp"
     name: "Exterior"
   windows_state:
     id: "windows_state"
     name: "Windows"
-      
+
 button:
   - platform: template
     id: ble_pair
@@ -270,8 +278,6 @@ switch:
             - lambda: id(tesla_ble_vehicle_id)->wake_on_boot_ = 1;
           else:
             - lambda: id(tesla_ble_vehicle_id)->wake_on_boot_ = 0;
-  
-
 
   - platform: ble_client
     id: sw_ble_connection
