@@ -9,7 +9,7 @@ substitutions:
 esphome:
   project:
     name: PedroKTFC.esphome-tesla-ble
-    version: "2026.1.A"
+    version: "2026.1.B-repair"
   name: ${device_name}
   name_add_mac_suffix: false
   friendly_name: ${friendly_name}
