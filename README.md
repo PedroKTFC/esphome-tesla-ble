@@ -77,6 +77,11 @@ These are the diagnostic button actions:
 - Regenerate key - will require repairing
 - Restart ESP board
 
+There are also several self-explanatory sensors. The `BLE Status` sensor reports if the ESP board is connected to the car. By default this reports the car as disconnected if the car isn't seen for over 30 seconds.
+> [!TIP]
+> There is a subsitution value `ble_presence_timeout` available to change this if you wish. For example, to change it to two  minutes use
+> `  ble_presence_timeout: 120s`.
+
 ### Configuration
 
 There are five number and two switch actions that allow the dynamic update of the polling parameters (see below). These are disabled by default as I recommend they should be changed through yaml but they are useful for tuning/debugging your setup. Note there is no equivalent to the `update_interval` parameter - this can still only be updated through yaml (and so a re-build). The following lists them with the equivalent polling parameter:
@@ -231,4 +236,5 @@ The following are instructions if you use `make`. I have never used these so can
 [releases]: https://github.com/Blackymas/PedroKTFC/esphome-tesla-ble
 [last-commit-shield]: https://img.shields.io/github/last-commit/PedroKTFC/esphome-tesla-ble
 [platform-shield]: https://img.shields.io/badge/platform-Home%20Assistant%20&%20ESPHome-blue
+
 
