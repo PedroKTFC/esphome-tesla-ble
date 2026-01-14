@@ -1,0 +1,130 @@
+# including this file will regionalize the entities to German:
+# - localize all names to German terminology
+# - use km. instead of mi for distance units by default
+
+
+tesla_ble_vehicle:
+  is_asleep:
+    name: "Im Ruhezustand"
+  is_user_present:
+    name: "Person erkannt"
+  is_unlocked:
+    name: "Entriegelt"
+  is_charge_flap_open:
+    icon: mdi:ev-plug-ccs2
+    name: "Ladeanschluss"
+  is_boot_open:
+    name: "Kofferraum hinten"
+  is_frunk_open:
+    name: "Kofferraum vorne"
+  shift_state:
+    name: "Schaltstellung"
+  defrost_state:
+    name: "Enteisung"
+  charge_state:
+    name: "Ladezustand"
+  odometer:
+    name: "Kilometerstand"
+    filters:
+      - multiply: 1.609344
+    unit_of_measurement: km
+  charge_current:
+    name: "Ladestrom"
+  charge_voltage:
+    name: "Ladespannung"
+  charge_power:
+    name: "Ladeleistung"
+  charge_energy_added:
+    name: "Bezogene Energie"
+  charge_distance_added:
+    name: "Reichweitenzuwachs"
+    filters:
+      - multiply: 1.609344
+    unit_of_measurement: km
+  max_soc:
+    name: "Ladelimit"
+  max_amps:
+    name: "Strombegrenzung"
+  mins_to_limit:
+    name: "Zeit bis Ladeende"
+  battery_range:
+    name: "Reichweite"
+    filters:
+      - multiply: 1.609344
+    unit_of_measurement: km
+  charging_state:
+    name: "Ladezustand"
+  last_update:
+    name: "Zuletzt aktualisiert"
+  is_climate_on:
+    name: "Klimaanlage"
+  internal_temp:
+    name: "Innenraumtemperatur"
+  external_temp:
+    name: "Außentemperatur"
+  windows_state:
+    name: "Fenster"
+button:
+  - id: !extend ble_pair
+    name: "BLE-Schlüsselpaarung"
+  - id: !extend btn_wake_up
+    name: "Aufwecken"
+  - id: !extend btn_flash_light
+    name: "Lichthupe"
+  - id: !extend btn_sound_horn
+    name: "Hupen"
+  - id: !extend btn_unlock_charge_port
+    name: "Ladeanschluss entriegeln"
+  - id: !extend btn_unlatch_driver_door
+    name: "Fahrertür öffnen"
+  - id: !extend btn_regenerate_key
+    name: "Schlüssel neu generieren"
+  - id: !extend btn_force_data_update
+    name: "Manuelle Datenaktualisierung"
+sensor:
+  - id: !extend ble_signal
+    name: "BLE-Signalstärke"
+switch:
+  - id: !extend sw_charger
+    name: "Laden"
+  - id: !extend sw_sentry_mode
+    name: "Wächtermodus"
+  - id: !extend sw_climate
+    name: "Klimaanlage"
+  - id: !extend sw_steering_wheel_heat
+    name: "Lenkradheizung"
+  - id: !extend sw_defrost_car
+    name: "Enteisung"
+  - id: !extend sw_ble_connection
+    name: "BLE-Verbindung"
+  - id: !extend fast_poll_if_unlocked
+    name: "Schnelle Abfrage bei entriegelt"
+lock:
+  - id: !extend lock_car
+    name: "Auto verriegeln"
+cover:
+  - id: !extend cov_vent
+    name: "Belüftung"
+  - id: !extend cov_charge_port
+    name: "Ladeanschluss"
+  - id: !extend cov_boot
+    name: "Kofferraum hinten"
+  - id: !extend cov_frunk
+    name: "Kofferraum vorne"
+number:
+  - id: !extend charging_amps
+    name: "Ladestrom"
+  - id: !extend charging_limit
+    name: "Ladelimit"
+  - id: !extend post_wake_poll_time
+    name: "Abfrageintervall nach Aufwecken"
+  - id: !extend poll_data_period
+    name: "Standard-Abfrageintervall"
+  - id: !extend poll_asleep_period
+    name: "Abfrageintervall im Ruhezustand"
+  - id: !extend poll_charging_period
+    name: "Abfrageintervall beim Laden"
+  - id: !extend ble_disconnected_min_time
+
+    name: "Min. Zeit für BLE-Trennung"
+

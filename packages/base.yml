@@ -5,11 +5,12 @@ substitutions:
   flash_size: "4MB"
   BLE_library: "https://github.com/PedroKTFC/tesla-ble.git"
   tesla_ble_component: "github://PedroKTFC/esphome-tesla-ble"
+  ble_presence_timeout: 30s
 
 esphome:
   project:
     name: PedroKTFC.esphome-tesla-ble
-    version: "2026.1.A"
+    version: "2026.1.B-repair"
   name: ${device_name}
   name_add_mac_suffix: false
   friendly_name: ${friendly_name}
