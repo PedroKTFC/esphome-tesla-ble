@@ -490,7 +490,7 @@ namespace esphome
 
       if (this->ble_read_buffer_.size() >= 2)
       {
-        int message_length = (this->ble_read_buffer_[0] << 8) | this->ble_read_buffer_[1];
+        int message_length = (this->ble_read_buffer_.front() << 8) | this->ble_read_buffer_.at(1);
 
         if (this->ble_read_buffer_.size() >= 2 + message_length)
         {
@@ -509,8 +509,7 @@ namespace esphome
       }
 
       UniversalMessage_RoutableMessage message = UniversalMessage_RoutableMessage_init_default;
-      int return_code = tesla_ble_client_->parseUniversalMessageBLE(
-          this->ble_read_buffer_.data(), this->ble_read_buffer_.size(), &message);
+      int return_code = tesla_ble_client_->parseUniversalMessageBLE (this->ble_read_buffer_.data(), this->ble_read_buffer_.size(), &message);
       if (return_code != 0)
       {
         ESP_LOGW(TAG, "BLE RX: Failed to parse incoming message");
@@ -582,12 +581,14 @@ namespace esphome
         ESP_LOGW(TAG, "[%s] Dropping message with invalid address length", request_uuid_hex);
         return;
       }
-
-      if (message.has_signedMessageStatus && message.signedMessageStatus.operation_status == UniversalMessage_OperationStatus_E_OPERATIONSTATUS_ERROR)
+      if (message.has_signedMessageStatus)
       {
-        // reset authentication for domain
-        auto session = tesla_ble_client_->getPeer(domain);
-        invalidateSession(domain);
+        if (message.signedMessageStatus.operation_status == UniversalMessage_OperationStatus_E_OPERATIONSTATUS_ERROR)
+        {
+          // reset authentication for domain
+          auto session = tesla_ble_client_->getPeer(domain);
+          invalidateSession(domain);
+        }
       }
 
       if (message.which_payload == UniversalMessage_RoutableMessage_session_info_tag)
@@ -1048,6 +1049,7 @@ namespace esphome
           sendCarServerVehicleActionMessage (GET_DRIVE_STATE, 0);
           sendCarServerVehicleActionMessage (GET_CLIMATE_STATE, 0);
           sendCarServerVehicleActionMessage (GET_CLOSURES_STATE, 0);
+          sendCarServerVehicleActionMessage (GET_TYRES_STATE, 0);
           if ((car_just_woken_ != 0) and ((millis() - car_wake_time_) > post_wake_poll_time_))
           {
             car_just_woken_ = 0;
@@ -1761,55 +1763,217 @@ namespace esphome
             *   There are two battery level fields, optional_usable_battery_level and optional_battery_level.
             *   The former seems to correspond to that provided by the Tesla app and in the car and so is used here.
             */
-            setCarBatteryLevel (carserver_response.response_msg.vehicleData.charge_state.optional_usable_battery_level.usable_battery_level);
-            setChargeCurrent (carserver_response.response_msg.vehicleData.charge_state.optional_charger_actual_current.charger_actual_current);
-            setChargeVoltage (carserver_response.response_msg.vehicleData.charge_state.optional_charger_voltage.charger_voltage);
-            setChargePower (carserver_response.response_msg.vehicleData.charge_state.optional_charger_power.charger_power);
-            setMaxSoc (carserver_response.response_msg.vehicleData.charge_state.optional_charge_limit_soc.charge_limit_soc);
-            setMaxAmps (carserver_response.response_msg.vehicleData.charge_state.optional_charging_amps.charging_amps);
-            setMinsToLimit (carserver_response.response_msg.vehicleData.charge_state.optional_minutes_to_charge_limit.minutes_to_charge_limit);
-            setBatteryRange (carserver_response.response_msg.vehicleData.charge_state.optional_battery_range.battery_range);
-            setChargeEnergyAdded (carserver_response.response_msg.vehicleData.charge_state.optional_charge_energy_added.charge_energy_added);
-            setChargeMilesAdded (carserver_response.response_msg.vehicleData.charge_state.optional_charge_miles_added_ideal.charge_miles_added_ideal);
-            switch (carserver_response.response_msg.vehicleData.charge_state.charging_state.which_type)
+            if (carserver_response.response_msg.vehicleData.charge_state.which_optional_usable_battery_level)
             {
-              case CarServer_ChargeState_ChargingState_Starting_tag:
-              case CarServer_ChargeState_ChargingState_Charging_tag:
-                if (car_is_charging_ == 0) {car_is_charging_ = 1;} // Set to 1 when charging starts to trigger immediate poll
-                break;
-              default:
-                car_is_charging_ = 0;
+              setCarBatteryLevel (carserver_response.response_msg.vehicleData.charge_state.optional_usable_battery_level.usable_battery_level);
             }
-            std::string charging_state_text = lookup_charging_state (carserver_response.response_msg.vehicleData.charge_state.charging_state.which_type);
-            setChargingState (charging_state_text.c_str());
+            else
+            {
+              ESP_LOGI (TAG, "No data to set car battery level");
+            }
+            if (carserver_response.response_msg.vehicleData.charge_state.which_optional_charger_actual_current)
+            {            
+              setChargeCurrent (carserver_response.response_msg.vehicleData.charge_state.optional_charger_actual_current.charger_actual_current);
+            }
+            else
+            {
+              ESP_LOGI (TAG, "No data to set actual current");
+            }
+            if (carserver_response.response_msg.vehicleData.charge_state.which_optional_charger_voltage)
+            {            
+              setChargeVoltage (carserver_response.response_msg.vehicleData.charge_state.optional_charger_voltage.charger_voltage);
+            }
+            else
+            {
+              ESP_LOGI (TAG, "No data to set charger voltage");
+            }
+            if (carserver_response.response_msg.vehicleData.charge_state.which_optional_charger_power)
+            {            
+              setChargePower (carserver_response.response_msg.vehicleData.charge_state.optional_charger_power.charger_power);
+            }
+            else
+            {
+              ESP_LOGI (TAG, "No data to set charger power");
+            }
+            if (carserver_response.response_msg.vehicleData.charge_state.which_optional_charge_limit_soc)
+            {            
+              setMaxSoc (carserver_response.response_msg.vehicleData.charge_state.optional_charge_limit_soc.charge_limit_soc);
+            }
+            else
+            {
+              ESP_LOGI (TAG, "No data to set soc limit");
+            }
+            if (carserver_response.response_msg.vehicleData.charge_state.which_optional_charging_amps)
+            {            
+              setMaxAmps (carserver_response.response_msg.vehicleData.charge_state.optional_charging_amps.charging_amps);
+            }
+            else
+            {
+              ESP_LOGI (TAG, "No data to set charging amps");
+            }
+            if (carserver_response.response_msg.vehicleData.charge_state.which_optional_minutes_to_charge_limit)
+            {            
+              setMinsToLimit (carserver_response.response_msg.vehicleData.charge_state.optional_minutes_to_charge_limit.minutes_to_charge_limit);
+            }
+            else
+            {
+              ESP_LOGI (TAG, "No data to set minutes to charge limit");
+            }
+            if (carserver_response.response_msg.vehicleData.charge_state.which_optional_battery_range)
+            {            
+              setBatteryRange (carserver_response.response_msg.vehicleData.charge_state.optional_battery_range.battery_range);
+            }
+            else
+            {
+              ESP_LOGI (TAG, "No data to set battery range");
+            }
+            if (carserver_response.response_msg.vehicleData.charge_state.which_optional_charge_energy_added)
+            {            
+              setChargeEnergyAdded (carserver_response.response_msg.vehicleData.charge_state.optional_charge_energy_added.charge_energy_added);
+            }
+            else
+            {
+              ESP_LOGI (TAG, "No data to set energy added");
+            }
+            if (carserver_response.response_msg.vehicleData.charge_state.which_optional_charge_miles_added_ideal)
+            {            
+              setChargeMilesAdded (carserver_response.response_msg.vehicleData.charge_state.optional_charge_miles_added_ideal.charge_miles_added_ideal);
+            }
+            else
+            {
+              ESP_LOGI (TAG, "No data to set miles added");
+            }
+            if (carserver_response.response_msg.vehicleData.charge_state.has_charging_state)
+            {            
+              switch (carserver_response.response_msg.vehicleData.charge_state.charging_state.which_type)
+              {
+                case CarServer_ChargeState_ChargingState_Starting_tag:
+                case CarServer_ChargeState_ChargingState_Charging_tag:
+                  if (car_is_charging_ == 0) {car_is_charging_ = 1;} // Set to 1 when charging starts to trigger immediate poll
+                  break;
+                default:
+                  car_is_charging_ = 0;
+              }
+              std::string charging_state_text = lookup_charging_state (carserver_response.response_msg.vehicleData.charge_state.charging_state.which_type);
+              setChargingState (charging_state_text.c_str());
+            }
+            else
+            {
+              ESP_LOGI (TAG, "No data to set charging state");
+            }
             setLastUpdateState (ctime(&timestamp));
           }
           else if (carserver_response.response_msg.vehicleData.has_drive_state)
           {
-            std::string shift_state_text = lookup_shift_state (carserver_response.response_msg.vehicleData.drive_state.shift_state.which_type);
-            setCarShiftState (shift_state_text.c_str());
-            setCarOdometer (carserver_response.response_msg.vehicleData.drive_state.optional_odometer_in_hundredths_of_a_mile.odometer_in_hundredths_of_a_mile);
+            if (carserver_response.response_msg.vehicleData.drive_state.has_shift_state)
+            {
+              std::string shift_state_text = lookup_shift_state (carserver_response.response_msg.vehicleData.drive_state.shift_state.which_type);
+              setCarShiftState (shift_state_text.c_str());
+            }
+            else
+            {
+              ESP_LOGI (TAG, "No data to set shift state");
+            }
+            if (carserver_response.response_msg.vehicleData.drive_state.which_optional_odometer_in_hundredths_of_a_mile)
+            {
+              setCarOdometer (carserver_response.response_msg.vehicleData.drive_state.optional_odometer_in_hundredths_of_a_mile.odometer_in_hundredths_of_a_mile);
+            }
+            else
+            {
+              ESP_LOGI (TAG, "No data to set odometer");
+            }
             setLastUpdateState (ctime(&timestamp));
           }
           else if (carserver_response.response_msg.vehicleData.has_climate_state)
           {
-            setClimateState (carserver_response.response_msg.vehicleData.climate_state.optional_is_climate_on.is_climate_on);
-            setInsideTemp (carserver_response.response_msg.vehicleData.climate_state.optional_inside_temp_celsius.inside_temp_celsius);
-            setOutsideTemp (carserver_response.response_msg.vehicleData.climate_state.optional_outside_temp_celsius.outside_temp_celsius);
-            std::string defrost_state_text = lookup_defrost_state (carserver_response.response_msg.vehicleData.climate_state.defrost_mode.which_type);
-            setDefrostState (defrost_state_text.c_str());
+            if (carserver_response.response_msg.vehicleData.climate_state.which_optional_is_climate_on)
+            {
+              setClimateState (carserver_response.response_msg.vehicleData.climate_state.optional_is_climate_on.is_climate_on);
+            }
+              else
+            {
+              ESP_LOGI (TAG, "No data to set climate on/off");
+            }
+            if (carserver_response.response_msg.vehicleData.climate_state.which_optional_inside_temp_celsius)
+            {
+              setInsideTemp (carserver_response.response_msg.vehicleData.climate_state.optional_inside_temp_celsius.inside_temp_celsius);
+            }
+            else
+            {
+              ESP_LOGI (TAG, "No data to set inside temperature");
+            }
+            if (carserver_response.response_msg.vehicleData.climate_state.which_optional_outside_temp_celsius)
+            {
+              setOutsideTemp (carserver_response.response_msg.vehicleData.climate_state.optional_outside_temp_celsius.outside_temp_celsius);
+            }
+            else
+            {
+              ESP_LOGI (TAG, "No data to set outside temperature");
+            }
+            if (carserver_response.response_msg.vehicleData.climate_state.has_defrost_mode)
+            {
+              std::string defrost_state_text = lookup_defrost_state (carserver_response.response_msg.vehicleData.climate_state.defrost_mode.which_type);
+              setDefrostState (defrost_state_text.c_str());
+            }
+            else
+            {
+              ESP_LOGI (TAG, "No data to set defrost mode");
+            }
             setLastUpdateState (ctime(&timestamp));
           }
           else if (carserver_response.response_msg.vehicleData.has_closures_state)
           {
-            setBootState (carserver_response.response_msg.vehicleData.closures_state.optional_door_open_trunk_rear.door_open_trunk_rear);
-            setFrunkState (carserver_response.response_msg.vehicleData.closures_state.optional_door_open_trunk_front.door_open_trunk_front);
+            if (carserver_response.response_msg.vehicleData.closures_state.which_optional_door_open_trunk_rear)
+            {
+              setBootState (carserver_response.response_msg.vehicleData.closures_state.optional_door_open_trunk_rear.door_open_trunk_rear);
+            }
+            else
+            {
+              ESP_LOGI (TAG, "No data to set boot state");
+            }
+            if (carserver_response.response_msg.vehicleData.closures_state.which_optional_window_open_driver_front)
+            {
+              setFrunkState (carserver_response.response_msg.vehicleData.closures_state.optional_door_open_trunk_front.door_open_trunk_front);
+            }
+            else
+            {
+              ESP_LOGI (TAG, "No data to set frunk state");
+            }
+            if (carserver_response.response_msg.vehicleData.closures_state.which_optional_window_open_driver_front and
+                carserver_response.response_msg.vehicleData.closures_state.which_optional_window_open_driver_rear and
+                carserver_response.response_msg.vehicleData.closures_state.which_optional_window_open_passenger_rear and
+                carserver_response.response_msg.vehicleData.closures_state.which_optional_window_open_passenger_front)
+            {
             setWindowsState (
               carserver_response.response_msg.vehicleData.closures_state.optional_window_open_driver_front.window_open_driver_front or
               carserver_response.response_msg.vehicleData.closures_state.optional_window_open_passenger_front.window_open_passenger_front or
               carserver_response.response_msg.vehicleData.closures_state.optional_window_open_driver_rear.window_open_driver_rear or
               carserver_response.response_msg.vehicleData.closures_state.optional_window_open_passenger_rear.window_open_passenger_rear
               );
+            }
+            else
+            {
+              ESP_LOGI (TAG, "No data to set windows state");
+            }
+            setLastUpdateState (ctime(&timestamp));
+          }
+          else if (carserver_response.response_msg.vehicleData.has_tire_pressure_state)
+          {
+            if (carserver_response.response_msg.vehicleData.tire_pressure_state.which_optional_tpms_pressure_fl and
+                carserver_response.response_msg.vehicleData.tire_pressure_state.which_optional_tpms_pressure_fr and
+                carserver_response.response_msg.vehicleData.tire_pressure_state.which_optional_tpms_pressure_rl and
+                carserver_response.response_msg.vehicleData.tire_pressure_state.which_optional_tpms_pressure_rr)
+            {
+              setTpmsTyrePressureFl (carserver_response.response_msg.vehicleData.tire_pressure_state.optional_tpms_pressure_fl.tpms_pressure_fl);
+              setTpmsTyrePressureFr (carserver_response.response_msg.vehicleData.tire_pressure_state.optional_tpms_pressure_fr.tpms_pressure_fr);
+              setTpmsTyrePressureRl (carserver_response.response_msg.vehicleData.tire_pressure_state.optional_tpms_pressure_rl.tpms_pressure_rl);
+              setTpmsTyrePressureRr (carserver_response.response_msg.vehicleData.tire_pressure_state.optional_tpms_pressure_rr.tpms_pressure_rr);
+            }
+            else
+            {
+              ESP_LOGI (TAG, "No data to set tyre pressures");
+            }
+            setLastUpdateState (ctime(&timestamp));
           }
           break;
         case 0: // No data in the response but presumably otherwise ok (controls)
@@ -2035,8 +2199,7 @@ namespace esphome
 
         unsigned char private_key_buffer[PRIVATE_KEY_SIZE];
         size_t private_key_length = 0;
-        int return_code = tesla_ble_client_->getPrivateKey(private_key_buffer, sizeof(private_key_buffer),
-                                                           &private_key_length);
+        int return_code = tesla_ble_client_->getPrivateKey(private_key_buffer, sizeof(private_key_buffer), &private_key_length);
         if (return_code != 0)
         {
           ESP_LOGE(TAG, "Failed to get private key");
@@ -2045,11 +2208,10 @@ namespace esphome
         ESP_LOGD(TAG, "Loaded private key");
 
         unsigned char public_key_buffer[PUBLIC_KEY_SIZE];
-        size_t public_key_length;
-        return_code = tesla_ble_client_->getPublicKey(public_key_buffer, &public_key_length);
-        if (return_code != 0)
+        size_t public_key_length = tesla_ble_client_->getPublicKey (public_key_buffer, sizeof (public_key_buffer));
+        if (public_key_length == 0)
         {
-          ESP_LOGE(TAG, "Failed to get public key");
+          ESP_LOGE(TAG, "Failed to get public key - buffer too small");
           break;
         }
         ESP_LOGD(TAG, "Loaded public key");
