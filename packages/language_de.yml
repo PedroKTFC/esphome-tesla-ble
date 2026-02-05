@@ -64,6 +64,14 @@ tesla_ble_vehicle:
     name: "Außentemperatur"
   windows_state:
     name: "Fenster"
+  tpms_pressure_fl:
+    name: "Reifendruck vorne links"
+  tpms_pressure_fr:
+    name: "Reifendruck vorne rechts"
+  tpms_pressure_rl:
+    name: "Reifendruck hinten links"
+  tpms_pressure_rr:
+    name: "Reifendruck hinten rechts"
 button:
   - id: !extend ble_pair
     name: "BLE-Schlüsselpaarung"
@@ -127,4 +135,3 @@ number:
   - id: !extend ble_disconnected_min_time
 
     name: "Min. Zeit für BLE-Trennung"
-
