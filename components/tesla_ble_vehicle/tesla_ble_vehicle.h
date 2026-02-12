@@ -326,6 +326,7 @@ namespace esphome
                     ShiftStateSensor->publish_state ("Unknown");
                     DefrostStateSensor->publish_state ("Unknown");
                     ChargingStateSensor->publish_state ("Unknown");
+                    ChargePortLatchStateSensor->publish_state ("Unknown");
                     BatteryRangeStateSensor->publish_state (NAN);
                     isClimateOnSensor->invalidate_state ();
                     insideTempStateSensor->publish_state (NAN);
@@ -385,6 +386,10 @@ namespace esphome
             void setDefrostState (std::string defrost_state)
             {
                 DefrostStateSensor->publish_state (defrost_state);
+            }
+            void setChargePortLatchState (std::string port_state)
+            {
+                ChargePortLatchStateSensor->publish_state (port_state);
             }
             void setChargingState (std::string charging_state)
             {
@@ -454,6 +459,10 @@ namespace esphome
             void set_text_sensor_charging_state (text_sensor::TextSensor *s)
             {
                 ChargingStateSensor = static_cast<text_sensor::TextSensor *>(s);
+            }
+            void set_text_sensor_charge_port_latch_state (text_sensor::TextSensor *s)
+            {
+                ChargePortLatchStateSensor = static_cast<text_sensor::TextSensor *>(s);
             }
             void set_text_sensor_last_update_state (text_sensor::TextSensor *s)
             {
@@ -582,6 +591,17 @@ namespace esphome
                 }
                 return ("Charging state look up error");
             }
+            std::string lookup_charge_port_latch_state (int charge_port_latch_state)
+            {
+                switch (charge_port_latch_state)
+                {
+                    case CarServer_ChargePortLatchState_SNA_tag:            return ("SNA");
+                    case CarServer_ChargePortLatchState_Disengaged_tag:     return ("Disengaged");
+                    case CarServer_ChargePortLatchState_Engaged_tag:        return ("Engaged");
+                    case CarServer_ChargePortLatchState_Blocking_tag:       return ("Blocking");
+                }
+                return ("Charge port latch state look up error");
+            }
 
         protected:
             std::queue<BLERXChunk> ble_read_queue_;
@@ -611,6 +631,7 @@ namespace esphome
             text_sensor::TextSensor *ShiftStateSensor;
             text_sensor::TextSensor *DefrostStateSensor;
             text_sensor::TextSensor *ChargingStateSensor;
+            text_sensor::TextSensor *ChargePortLatchStateSensor;
             text_sensor::TextSensor *LastUpdateStateSensor;
             sensor::Sensor *ChargeStateSensor;
             sensor::Sensor *OdometerStateSensor;
