@@ -516,7 +516,6 @@ namespace esphome
         return;
       }
 
-//      BLEResponse response = response_queue_.front();
       read_queue_message_ = response_queue_.front().message;
       response_queue_.pop();
 
@@ -1819,6 +1818,11 @@ namespace esphome
                 case CarServer_ChargeState_ChargingState_Charging_tag:
                   if (car_is_charging_ == 0) {car_is_charging_ = 1;} // Set to 1 when charging starts to trigger immediate poll
                   break;
+                case CarServer_ChargeState_ChargingState_Unknown_tag:
+                case CarServer_ChargeState_ChargingState_Disconnected_tag:
+                case CarServer_ChargeState_ChargingState_NoPower_tag:
+                case CarServer_ChargeState_ChargingState_Stopped_tag:
+                  MinsToLimitStateSensor->publish_state (NAN); // If not charging, minutes to limit makes no sense (and run into default as not charging)
                 default:
                   car_is_charging_ = 0;
               }
@@ -1828,6 +1832,15 @@ namespace esphome
             else
             {
               ESP_LOGI (TAG, "No data to set charging state");
+            }
+            if (carserver_response.response_msg.vehicleData.charge_state.has_charge_port_latch)
+            {            
+              std::string charge_port_latch_state_text = lookup_charge_port_latch_state (carserver_response.response_msg.vehicleData.charge_state.charge_port_latch.which_type);
+              setChargePortLatchState (charge_port_latch_state_text.c_str());
+            }
+            else
+            {
+              ESP_LOGI (TAG, "No data to set charge port latch");
             }
             setLastUpdateState (ctime(&timestamp));
           }
