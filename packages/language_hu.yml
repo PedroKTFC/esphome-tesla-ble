@@ -53,6 +53,8 @@ tesla_ble_vehicle:
     unit_of_measurement: km
   charging_state:
     name: "Töltési állapot"
+  charge_port_latch_state:
+    name: "Töltőnyílás retesz"
   last_update:
     name: "Utoljára frissült"
   is_climate_on:
