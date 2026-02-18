@@ -83,6 +83,7 @@ struct ActionMessageDetail
     AllowedMsg whichMsg;
     int actionTag;
     GetOnSet getOnSet;
+    int numberUpdatesBetweenGets; // Only used for GetVehicleDataMessage
 };
 
 namespace esphome
@@ -94,25 +95,25 @@ namespace esphome
 
         static const struct ActionMessageDetail ACTION_SPECIFICS[] =
         {
-            {DO_NOTHING,                       "",                          Empty,                 0,                                                              Invalid},
-            {GET_CHARGE_STATE,                 "getChargeState",            GetVehicleDataMessage, CarServer_GetVehicleData_getChargeState_tag,                    Invalid},
-            {GET_CLIMATE_STATE,                "getClimateState",           GetVehicleDataMessage, CarServer_GetVehicleData_getClimateState_tag,                   Invalid},
-            {GET_DRIVE_STATE,                  "getDriveState",             GetVehicleDataMessage, CarServer_GetVehicleData_getDriveState_tag,                     Invalid},
-            {GET_LOCATION_STATE,               "getLocationState",          GetVehicleDataMessage, CarServer_GetVehicleData_getLocationState_tag,                  Invalid},
-            {GET_CLOSURES_STATE,               "getClosuresState",          GetVehicleDataMessage, CarServer_GetVehicleData_getClosuresState_tag,                  Invalid},
-            {GET_TYRES_STATE,                  "getTyresState",             GetVehicleDataMessage, CarServer_GetVehicleData_getTirePressureState_tag,              Invalid},
-            {SET_CHARGING_SWITCH,              "setChargingSwitch",         VehicleActionMessage,  CarServer_VehicleAction_chargingStartStopAction_tag,            GetChargeState},
-            {SET_CHARGING_AMPS,                "setChargingAmps",           VehicleActionMessage,  CarServer_VehicleAction_setChargingAmpsAction_tag,              GetChargeState},
-            {SET_CHARGING_LIMIT,               "setChargingLimit",          VehicleActionMessage,  CarServer_VehicleAction_chargingSetLimitAction_tag,             GetChargeState},
-            {SET_SENTRY_SWITCH,                "setSentrySwitch",           VehicleActionMessage,  CarServer_VehicleAction_vehicleControlSetSentryModeAction_tag,  Invalid},
-            {SET_HVAC_SWITCH,                  "setHVACSwitch",             VehicleActionMessage,  CarServer_VehicleAction_hvacAutoAction_tag,                     GetClimateState},
-            {SET_HVAC_STEERING_HEATER_SWITCH,  "setHVACSteeringHeatSwitch", VehicleActionMessage,  CarServer_VehicleAction_hvacSteeringWheelHeaterAction_tag,      Invalid},
-            {SET_OPEN_CHARGE_PORT_DOOR,        "setOpenChargePortDoor",     VehicleActionMessage,  CarServer_VehicleAction_chargePortDoorOpen_tag,                 Invalid},
-            {SET_CLOSE_CHARGE_PORT_DOOR,       "setCloseChargePortDoor",    VehicleActionMessage,  CarServer_VehicleAction_chargePortDoorClose_tag,                Invalid},
-            {SOUND_HORN,                       "soundHorn",                 VehicleActionMessage,  CarServer_VehicleAction_vehicleControlHonkHornAction_tag,       Invalid},
-            {FLASH_LIGHT,                      "flashLight",                VehicleActionMessage,  CarServer_VehicleAction_vehicleControlFlashLightsAction_tag,    Invalid},
-            {SET_WINDOWS_SWITCH,               "setWindowsSwitch",          VehicleActionMessage,  CarServer_VehicleAction_vehicleControlWindowAction_tag,         GetClosureState},
-            {DEFROST_CAR,                      "defrostCar",                VehicleActionMessage,  CarServer_VehicleAction_hvacSetPreconditioningMaxAction_tag,    GetClimateState}
+            {DO_NOTHING,                       "",                          Empty,                 0,                                                              Invalid,         0},
+            {GET_CHARGE_STATE,                 "getChargeState",            GetVehicleDataMessage, CarServer_GetVehicleData_getChargeState_tag,                    Invalid,         1},
+            {GET_CLIMATE_STATE,                "getClimateState",           GetVehicleDataMessage, CarServer_GetVehicleData_getClimateState_tag,                   Invalid,         5},
+            {GET_DRIVE_STATE,                  "getDriveState",             GetVehicleDataMessage, CarServer_GetVehicleData_getDriveState_tag,                     Invalid,         1},
+            {GET_LOCATION_STATE,               "getLocationState",          GetVehicleDataMessage, CarServer_GetVehicleData_getLocationState_tag,                  Invalid,         10},
+            {GET_CLOSURES_STATE,               "getClosuresState",          GetVehicleDataMessage, CarServer_GetVehicleData_getClosuresState_tag,                  Invalid,         6},
+            {GET_TYRES_STATE,                  "getTyresState",             GetVehicleDataMessage, CarServer_GetVehicleData_getTirePressureState_tag,              Invalid,         17},
+            {SET_CHARGING_SWITCH,              "setChargingSwitch",         VehicleActionMessage,  CarServer_VehicleAction_chargingStartStopAction_tag,            GetChargeState,  0},
+            {SET_CHARGING_AMPS,                "setChargingAmps",           VehicleActionMessage,  CarServer_VehicleAction_setChargingAmpsAction_tag,              GetChargeState,  0},
+            {SET_CHARGING_LIMIT,               "setChargingLimit",          VehicleActionMessage,  CarServer_VehicleAction_chargingSetLimitAction_tag,             GetChargeState,  0},
+            {SET_SENTRY_SWITCH,                "setSentrySwitch",           VehicleActionMessage,  CarServer_VehicleAction_vehicleControlSetSentryModeAction_tag,  Invalid,         0},
+            {SET_HVAC_SWITCH,                  "setHVACSwitch",             VehicleActionMessage,  CarServer_VehicleAction_hvacAutoAction_tag,                     GetClimateState, 0},
+            {SET_HVAC_STEERING_HEATER_SWITCH,  "setHVACSteeringHeatSwitch", VehicleActionMessage,  CarServer_VehicleAction_hvacSteeringWheelHeaterAction_tag,      Invalid,         0},
+            {SET_OPEN_CHARGE_PORT_DOOR,        "setOpenChargePortDoor",     VehicleActionMessage,  CarServer_VehicleAction_chargePortDoorOpen_tag,                 Invalid,         0},
+            {SET_CLOSE_CHARGE_PORT_DOOR,       "setCloseChargePortDoor",    VehicleActionMessage,  CarServer_VehicleAction_chargePortDoorClose_tag,                Invalid,         0},
+            {SOUND_HORN,                       "soundHorn",                 VehicleActionMessage,  CarServer_VehicleAction_vehicleControlHonkHornAction_tag,       Invalid,         0},
+            {FLASH_LIGHT,                      "flashLight",                VehicleActionMessage,  CarServer_VehicleAction_vehicleControlFlashLightsAction_tag,    Invalid,         0},
+            {SET_WINDOWS_SWITCH,               "setWindowsSwitch",          VehicleActionMessage,  CarServer_VehicleAction_vehicleControlWindowAction_tag,         GetClosureState, 0},
+            {DEFROST_CAR,                      "defrostCar",                VehicleActionMessage,  CarServer_VehicleAction_hvacSetPreconditioningMaxAction_tag,    GetClimateState, 0}
         };
 
         static const char *const TAG = "tesla_ble_vehicle";
@@ -214,6 +215,14 @@ namespace esphome
             int ble_disconnected_time_;
             int ble_disconnected_min_time_;
             int fast_poll_if_unlocked_ = 1; // != 0 enables fast polling
+            int number_updates_since_connection_ = 0;
+            UniversalMessage_RoutableMessage read_queue_message_;
+            CarServer_Response static_carserver_response_;
+            unsigned char static_message_buffer_[UniversalMessage_RoutableMessage_size];
+            //BLETXChunk static_tx_chunk_;
+            //BLERXChunk static_rx_chunk_;
+
+
             TeslaBLEVehicle();
             void setup() override;
             void loop() override;
@@ -317,6 +326,7 @@ namespace esphome
                     ShiftStateSensor->publish_state ("Unknown");
                     DefrostStateSensor->publish_state ("Unknown");
                     ChargingStateSensor->publish_state ("Unknown");
+                    ChargePortLatchStateSensor->publish_state ("Unknown");
                     BatteryRangeStateSensor->publish_state (NAN);
                     isClimateOnSensor->invalidate_state ();
                     insideTempStateSensor->publish_state (NAN);
@@ -376,6 +386,10 @@ namespace esphome
             void setDefrostState (std::string defrost_state)
             {
                 DefrostStateSensor->publish_state (defrost_state);
+            }
+            void setChargePortLatchState (std::string port_state)
+            {
+                ChargePortLatchStateSensor->publish_state (port_state);
             }
             void setChargingState (std::string charging_state)
             {
@@ -445,6 +459,10 @@ namespace esphome
             void set_text_sensor_charging_state (text_sensor::TextSensor *s)
             {
                 ChargingStateSensor = static_cast<text_sensor::TextSensor *>(s);
+            }
+            void set_text_sensor_charge_port_latch_state (text_sensor::TextSensor *s)
+            {
+                ChargePortLatchStateSensor = static_cast<text_sensor::TextSensor *>(s);
             }
             void set_text_sensor_last_update_state (text_sensor::TextSensor *s)
             {
@@ -573,6 +591,17 @@ namespace esphome
                 }
                 return ("Charging state look up error");
             }
+            std::string lookup_charge_port_latch_state (int charge_port_latch_state)
+            {
+                switch (charge_port_latch_state)
+                {
+                    case CarServer_ChargePortLatchState_SNA_tag:            return ("SNA");
+                    case CarServer_ChargePortLatchState_Disengaged_tag:     return ("Disengaged");
+                    case CarServer_ChargePortLatchState_Engaged_tag:        return ("Engaged");
+                    case CarServer_ChargePortLatchState_Blocking_tag:       return ("Blocking");
+                }
+                return ("Charge port latch state look up error");
+            }
 
         protected:
             std::queue<BLERXChunk> ble_read_queue_;
@@ -602,6 +631,7 @@ namespace esphome
             text_sensor::TextSensor *ShiftStateSensor;
             text_sensor::TextSensor *DefrostStateSensor;
             text_sensor::TextSensor *ChargingStateSensor;
+            text_sensor::TextSensor *ChargePortLatchStateSensor;
             text_sensor::TextSensor *LastUpdateStateSensor;
             sensor::Sensor *ChargeStateSensor;
             sensor::Sensor *OdometerStateSensor;

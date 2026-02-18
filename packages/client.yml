@@ -82,6 +82,10 @@ tesla_ble_vehicle:
   charging_state:
     id: "charging_state"
     name: "Charging state"
+  charge_port_latch_state:
+    id: "charge_port_latch_state"
+    name: "Charge port latch state"
+    disabled_by_default: true
   last_update:
     id: "last_update"
     name: "Last update"

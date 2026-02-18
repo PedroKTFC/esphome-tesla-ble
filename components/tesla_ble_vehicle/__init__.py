@@ -31,6 +31,7 @@ CONF_MAX_AMPS = "max_amps"
 CONF_MINS_TO_LIMIT = "mins_to_limit"
 CONF_BATTERY_RANGE = "battery_range"
 CONF_CHARGING_STATE = "charging_state"
+CONF_CHARGE_PORT_LATCH_STATE = "charge_port_latch_state"
 CONF_CHARGE_ENERGY_ADDED = "charge_energy_added"
 CONF_CHARGE_DISTANCE_ADDED = "charge_distance_added"
 CONF_LAST_UPDATE = "last_update"
@@ -133,6 +134,9 @@ CONFIG_SCHEMA = (
             ).extend(),
             cv.Optional(CONF_CHARGING_STATE): text_sensor.text_sensor_schema(
                 icon="mdi:ev-station"
+            ).extend(),
+            cv.Optional(CONF_CHARGE_PORT_LATCH_STATE): text_sensor.text_sensor_schema(
+                icon="mdi:battery-lock"
             ).extend(),
             cv.Optional(CONF_LAST_UPDATE): text_sensor.text_sensor_schema(
                 icon="mdi:update"
@@ -263,6 +267,10 @@ async def to_code(config):
         conf = config[CONF_CHARGING_STATE]
         ts = await text_sensor.new_text_sensor(conf)
         cg.add(var.set_text_sensor_charging_state(ts))
+    if CONF_CHARGE_PORT_LATCH_STATE in config:
+        conf = config[CONF_CHARGE_PORT_LATCH_STATE]
+        ts = await text_sensor.new_text_sensor(conf)
+        cg.add(var.set_text_sensor_charge_port_latch_state(ts))
     if CONF_LAST_UPDATE in config:
         conf = config[CONF_LAST_UPDATE]
         ts = await text_sensor.new_text_sensor(conf)
