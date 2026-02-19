@@ -2116,9 +2116,7 @@ namespace esphome
         auto *readChar = this->parent()->get_characteristic(this->service_uuid_, this->read_uuid_);
         if (readChar == nullptr)
         {
-          ESP_LOGW(TAG, "No write characteristic found at service %s read %s",
-                  this->service_uuid_.to_string().c_str(),
-                  this->read_uuid_.to_string().c_str());
+          ESP_LOGW(TAG, "No read characteristic found at service %s read %s", SERVICE_UUID, READ_UUID);
           break;
         }
         this->read_handle_ = readChar->handle;
@@ -2133,9 +2131,7 @@ namespace esphome
         auto *writeChar = this->parent()->get_characteristic(this->service_uuid_, this->write_uuid_);
         if (writeChar == nullptr)
         {
-          ESP_LOGW(TAG, "No write characteristic found at service %s write %s",
-                  this->service_uuid_.to_string().c_str(),
-                  this->write_uuid_.to_string().c_str());
+          ESP_LOGW(TAG, "No write characteristic found at service %s write %s", SERVICE_UUID, WRITE_UUID);
           break;
         }
         this->write_handle_ = writeChar->handle;
