@@ -619,7 +619,7 @@ namespace esphome
       switch (read_queue_message_.from_destination.which_sub_destination)
       {
       case UniversalMessage_Destination_domain_tag:
-      {9
+      {
         ESP_LOGD(TAG, "Received message from domain %s", domain_to_string(read_queue_message_.from_destination.sub_destination.domain));
         switch (read_queue_message_.from_destination.sub_destination.domain)
         {
