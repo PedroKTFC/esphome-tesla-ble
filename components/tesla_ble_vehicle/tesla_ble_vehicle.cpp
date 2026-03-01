@@ -514,6 +514,9 @@ namespace esphome
       if (return_code != 0)
       {
         ESP_LOGW(TAG, "BLE RX: Failed to parse incoming message");
+        this->ble_read_buffer_.clear();
+        this->ble_read_buffer_.shrink_to_fit();
+        return;
       }
       ESP_LOGD(TAG, "BLE RX: Parsed UniversalMessage");
       // clear read buffer
@@ -1369,6 +1372,16 @@ namespace esphome
     int TeslaBLEVehicle::sendVCSECClosureMoveRequestMessage (int moveWhat, VCSEC_ClosureMoveType_E moveType)
     {
       ESP_LOGD(TAG, "Building sendVCSECClosureMoveRequestMessage");
+#ifdef TESLA_BLE_DISABLE_PHYSICAL_ACCESS
+      if (moveType == VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_OPEN &&
+          (moveWhat == VCSEC_ClosureMoveRequest_frontTrunk_tag ||
+           moveWhat == VCSEC_ClosureMoveRequest_rearTrunk_tag ||
+           moveWhat == VCSEC_ClosureMoveRequest_frontDriverDoor_tag))
+      {
+        ESP_LOGE(TAG, "[sendVCSECClosureMoveRequestMessage] Physical access command blocked (allow_physical_access: false)");
+        return 1;
+      }
+#endif
       unsigned char action_message_buffer[UniversalMessage_RoutableMessage_size];
       size_t action_message_buffer_length = 0;
       VCSEC_ClosureMoveRequest closureMoveRequest = VCSEC_ClosureMoveRequest_init_default; // initialise to do nothing on all
@@ -1479,6 +1492,13 @@ namespace esphome
     int TeslaBLEVehicle::lockVehicle (VCSEC_RKEAction_E lock)
     {
       ESP_LOGI (TAG, "(Un)locking) vehicle %d", lock);
+#ifdef TESLA_BLE_DISABLE_PHYSICAL_ACCESS
+      if (lock == VCSEC_RKEAction_E_RKE_ACTION_UNLOCK)
+      {
+        ESP_LOGE(TAG, "[lockVehicle] Unlock is disabled (allow_physical_access: false)");
+        return 1;
+      }
+#endif
       // enqueue command
       switch (lock)
       {
@@ -1571,6 +1591,13 @@ namespace esphome
     *   Causes the appropriate message to be built using the ACTION_SPECIFICS table.
     */
     {
+#ifdef TESLA_BLE_DISABLE_PHYSICAL_ACCESS
+      if (action == SET_WINDOWS_SWITCH && param == 1)
+      {
+        ESP_LOGE(TAG, "[sendCarServerVehicleActionMessage] Vent windows blocked (allow_physical_access: false)");
+        return 1;
+      }
+#endif
       if (ACTION_SPECIFICS[action].localActionDef != action)
       {
         ESP_LOGE (TAG, "[%s] Action requested %d not that in specifics %d", ACTION_SPECIFICS[action].action_str.c_str(), action, ACTION_SPECIFICS[action].localActionDef);
@@ -1749,7 +1776,7 @@ namespace esphome
       }
     }
     
-    int TeslaBLEVehicle::handleInfoCarServerResponse (CarServer_Response carserver_response)
+    int TeslaBLEVehicle::handleInfoCarServerResponse (const CarServer_Response& carserver_response)
     {
       switch (carserver_response.which_response_msg)
       {
@@ -1818,6 +1845,18 @@ namespace esphome
             setTpmsTyrePressureFr (carserver_response.response_msg.vehicleData.tire_pressure_state.optional_tpms_pressure_fr.tpms_pressure_fr);
             setTpmsTyrePressureRl (carserver_response.response_msg.vehicleData.tire_pressure_state.optional_tpms_pressure_rl.tpms_pressure_rl);
             setTpmsTyrePressureRr (carserver_response.response_msg.vehicleData.tire_pressure_state.optional_tpms_pressure_rr.tpms_pressure_rr);
+          }
+          else if (carserver_response.response_msg.vehicleData.has_charge_schedule_state)
+          {
+            // Charge schedule state is present when the car has scheduled charging configured.
+            // Not currently mapped to sensors; acknowledged here to prevent unhandled-response warnings.
+            ESP_LOGD(TAG, "[handleInfoCarServerResponse] Received charge_schedule_state (not handled)");
+          }
+          else if (carserver_response.response_msg.vehicleData.has_preconditioning_schedule_state)
+          {
+            // Preconditioning schedule state is present when the car has scheduled departure configured.
+            // Not currently mapped to sensors; acknowledged here to prevent unhandled-response warnings.
+            ESP_LOGD(TAG, "[handleInfoCarServerResponse] Received preconditioning_schedule_state (not handled)");
           }
           break;
         case 0: // No data in the response but presumably otherwise ok (controls)
@@ -2053,8 +2092,7 @@ namespace esphome
         ESP_LOGD(TAG, "Loaded private key");
 
         unsigned char public_key_buffer[PUBLIC_KEY_SIZE];
-        size_t public_key_length;
-        return_code = tesla_ble_client_->getPublicKey(public_key_buffer, &public_key_length);
+        return_code = tesla_ble_client_->getPublicKey(public_key_buffer, sizeof(public_key_buffer));
         if (return_code != 0)
         {
           ESP_LOGE(TAG, "Failed to get public key");

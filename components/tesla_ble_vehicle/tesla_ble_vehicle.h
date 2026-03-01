@@ -125,7 +125,7 @@ namespace esphome
 
         static const int PRIVATE_KEY_SIZE = 228;
         static const int PUBLIC_KEY_SIZE = 65;
-        static const int MAX_BLE_MESSAGE_SIZE = 1024; // Max size of a BLE message
+        static const int MAX_BLE_MESSAGE_SIZE = 4096; // Max size of a BLE message (increased to handle schedule config responses)
         static const int RX_TIMEOUT = 1 * 1000;       // Timeout interval between receiving chunks of a message (1s)
         static const int MAX_LATENCY = 4 * 1000;      // Max allowed error when syncing vehicle clock (4s)
         static const int BLOCK_LENGTH = 20;           // BLE MTU is 23 bytes, so we need to split the message into chunks (20 bytes as in vehicle_command)
@@ -238,7 +238,7 @@ namespace esphome
             int nvs_load_session_info(Signatures_SessionInfo *session_info, const UniversalMessage_Domain domain);
             int nvs_initialize_private_key();
 
-            int handleInfoCarServerResponse (CarServer_Response carserver_response);
+            int handleInfoCarServerResponse (const CarServer_Response& carserver_response);
             int handleSessionInfoUpdate(UniversalMessage_RoutableMessage message, UniversalMessage_Domain domain);
             int handleVCSECVehicleStatus(VCSEC_VehicleStatus vehicleStatus);
 
