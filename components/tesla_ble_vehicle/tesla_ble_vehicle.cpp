@@ -2068,8 +2068,7 @@ namespace esphome
         ESP_LOGD(TAG, "Loaded private key");
 
         unsigned char public_key_buffer[PUBLIC_KEY_SIZE];
-        size_t public_key_length;
-        return_code = tesla_ble_client_->getPublicKey(public_key_buffer, &public_key_length);
+        return_code = tesla_ble_client_->getPublicKey(public_key_buffer, sizeof(public_key_buffer));
         if (return_code != 0)
         {
           ESP_LOGE(TAG, "Failed to get public key");
