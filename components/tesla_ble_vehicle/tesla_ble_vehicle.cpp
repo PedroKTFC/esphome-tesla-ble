@@ -514,6 +514,9 @@ namespace esphome
       if (return_code != 0)
       {
         ESP_LOGW(TAG, "BLE RX: Failed to parse incoming message");
+        this->ble_read_buffer_.clear();
+        this->ble_read_buffer_.shrink_to_fit();
+        return;
       }
       ESP_LOGD(TAG, "BLE RX: Parsed UniversalMessage");
       // clear read buffer
@@ -1749,7 +1752,7 @@ namespace esphome
       }
     }
     
-    int TeslaBLEVehicle::handleInfoCarServerResponse (CarServer_Response carserver_response)
+    int TeslaBLEVehicle::handleInfoCarServerResponse (const CarServer_Response& carserver_response)
     {
       switch (carserver_response.which_response_msg)
       {
@@ -1818,6 +1821,18 @@ namespace esphome
             setTpmsTyrePressureFr (carserver_response.response_msg.vehicleData.tire_pressure_state.optional_tpms_pressure_fr.tpms_pressure_fr);
             setTpmsTyrePressureRl (carserver_response.response_msg.vehicleData.tire_pressure_state.optional_tpms_pressure_rl.tpms_pressure_rl);
             setTpmsTyrePressureRr (carserver_response.response_msg.vehicleData.tire_pressure_state.optional_tpms_pressure_rr.tpms_pressure_rr);
+          }
+          else if (carserver_response.response_msg.vehicleData.has_charge_schedule_state)
+          {
+            // Charge schedule state is present when the car has scheduled charging configured.
+            // Not currently mapped to sensors; acknowledged here to prevent unhandled-response warnings.
+            ESP_LOGD(TAG, "[handleInfoCarServerResponse] Received charge_schedule_state (not handled)");
+          }
+          else if (carserver_response.response_msg.vehicleData.has_preconditioning_schedule_state)
+          {
+            // Preconditioning schedule state is present when the car has scheduled departure configured.
+            // Not currently mapped to sensors; acknowledged here to prevent unhandled-response warnings.
+            ESP_LOGD(TAG, "[handleInfoCarServerResponse] Received preconditioning_schedule_state (not handled)");
           }
           break;
         case 0: // No data in the response but presumably otherwise ok (controls)
