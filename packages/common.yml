@@ -30,6 +30,7 @@ text_sensor:
     icon: mdi:cube-outline
   - platform: wifi_info
     ip_address:
+      id: esphome_wifi_ip_address
       name: "IP Address"
 
 time:
