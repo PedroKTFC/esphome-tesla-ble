@@ -24,8 +24,6 @@ api:
 # wifi: !remove
 # sensor:
 #   - id: !remove esphome_tesla_ble_wifi_signal
-# text_sensor:
-#   - id: !remove esphome_wifi_ip_address
 # esp32_ble_tracker:
 #   scan_parameters:
 #     continuous: true
