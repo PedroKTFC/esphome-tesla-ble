@@ -28,10 +28,15 @@ text_sensor:
     id: esphome_tesla_ble_version
     name: "Version"
     icon: mdi:cube-outline
-  - platform: wifi_info
-    ip_address:
-      id: esphome_wifi_ip_address
-      name: "IP Address"
+  - platform: template
+    id: esphome_tesla_ble_ip_address
+    name: "IP Address"
+    icon: mdi:network
+    lambda: |-
+      auto addrs = network::get_ip_addresses();
+      if (addrs.empty()) return {"0.0.0.0"};
+      return {addrs[0].str()};
+    update_interval: 60s
 
 time:
   - platform: homeassistant
