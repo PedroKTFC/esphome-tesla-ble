@@ -35,7 +35,9 @@ text_sensor:
     lambda: |-
       auto addrs = network::get_ip_addresses();
       if (addrs.empty()) return {"0.0.0.0"};
-      return {addrs[0].str()};
+      char buf[network::IP_ADDRESS_BUFFER_SIZE];
+      addrs[0].str_to(buf);
+      return {std::string(buf)};
     update_interval: 60s
 
 time:
