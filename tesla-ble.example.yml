@@ -31,11 +31,14 @@ api:
 #     continuous: true
 
 packages:
-  remote_package_files:
-    url: https://github.com/PedroKTFC/esphome-tesla-ble/
-    path: packages
-    files: [base.yml, common.yml, project.yml, client.yml]
-  # listener: github://PedroKTFC/esphome-tesla-ble/packages/listener.yml # Uncomment this to scan find your VIN BLE MAC address
+  - url: https://github.com/PedroKTFC/esphome-tesla-ble/
+    ref: main
+    files:
+      - packages/base.yml
+      - packages/common.yml
+      - packages/project.yml
+      - packages/client.yml
+  #   - packages/listener.yml  # listener: github://PedroKTFC/esphome-tesla-ble/packages/listener.yml # Uncomment this to scan find your VIN BLE MAC address
   # language: github://PedroKTFC/esphome-tesla-ble/packages/language_hu.yml # Uncomment this to translate the entity names to your language. If yours is missing, submit a PR here!
   # language: github://PedroKTFC/esphome-tesla-ble/packages/language_de.yml # Uncomment this to translate the entity names to your language. If yours is missing, submit a PR here!
 
