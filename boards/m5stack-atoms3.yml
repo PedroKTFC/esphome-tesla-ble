@@ -35,8 +35,8 @@ light:
     rgb_order: GRB
     pin: 35
     num_leds: 4
-    # RMT 0 channels will be occupied by IR
-    rmt_channel: 1
+    # RMT 0 channels will be occupied by IR - Not Supported on IDF 5.x and onwards
+    # rmt_channel: 1
     chipset: ws2812
     id: led
     name: "Led"
@@ -55,4 +55,3 @@ binary_sensor:
         pullup: true
     filters:
       - delayed_off: 10ms
-

@@ -1,0 +1,45 @@
+esphome:
+  name: ble-scanner
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    
+
+logger:
+  level: DEBUG
+
+ota:
+  - platform: esphome
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+esp32_ble_tracker:
+  on_ble_advertise:
+    then:
+      - lambda: |-
+          std::string name = x.get_name();
+          bool is_tesla_format = false;
+
+          if (name.rfind("Tesla ", 0) == 0 && name.length() == 12) {
+            is_tesla_format = true;
+            for (int i = 6; i < 12; ++i) {
+              if (!isdigit(name[i])) {
+                is_tesla_format = false;
+                break;
+              }
+            }
+          }
+
+          if (is_tesla_format ||
+              (!name.empty() && name.front() == 'S' && name.back() == 'C') && name.length() == 18) {
+            ESP_LOGI("ble_adv", "Tesla found: MAC=%s Name=%s",
+              x.address_str().c_str(), name.c_str());
+          }
