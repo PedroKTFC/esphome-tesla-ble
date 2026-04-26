@@ -1,11 +1,25 @@
 substitutions:
-  # Note substitutions in your yaml will override those here
   friendly_name: Tesla BLE
   device_name: tesla-ble
   device_description: Tesla BLE
-  ble_mac_address: !secret ble_mac_address # note this and the following are mandatory and pulled from the secrets file
-  tesla_vin: !secret tesla_vin
   charging_amps_max: "32"
+
+  # --- Single car setup (default) ---
+  # Add the following two lines to your secrets.yaml:
+  #   ble_mac_address: AA:BB:CC:DD:EE:FF   # your car's BLE MAC address
+  #   tesla_vin: 5YJ3E1EA4JF000001         # your 17-character Tesla VIN
+  ble_mac_address: !secret ble_mac_address
+  tesla_vin: !secret tesla_vin
+
+  # --- Multiple cars setup ---
+  # Use unique secret names per device in secrets.yaml, e.g.:
+  #   car1_ble_mac_address: AA:BB:CC:DD:EE:FF
+  #   car1_tesla_vin: 5YJ3E1EA4JF000001
+  #   car2_ble_mac_address: 11:22:33:44:55:66
+  #   car2_tesla_vin: 5YJ3E1EA4JF000002
+  # Then in each device YAML, override the substitutions:
+  #   ble_mac_address: !secret car1_ble_mac_address
+  #   tesla_vin: !secret car1_tesla_vin
 
 # The following shows the default board and variant settings. 
 # Uncomment and changing them is only needed if they are not appropriate for your board (see read.me documentation for support):

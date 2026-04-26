@@ -1,3 +1,29 @@
+esphome:
+  on_boot:
+    priority: 601.0
+    then:
+      - lambda: |-
+          // ISO 3779 mandates VINs are exactly 17 alphanumeric characters.
+          // sizeof() on a C string literal includes the null terminator, so a valid VIN yields sizeof == 18.
+          // Any other value (empty, undefined substitution, wrong length) produces sizeof != 18 and fails here.
+          static_assert(sizeof("$tesla_vin") == 18,
+              "CONFIG ERROR: 'tesla_vin' is not set or is not a 17-character VIN. "
+              "Single car: add 'tesla_vin: !secret tesla_vin' to your substitutions and "
+              "'tesla_vin: 5YJ3E1EA4JF000001' to secrets.yaml. "
+              "Multiple cars: use a unique secret name per device, e.g. "
+              "'tesla_vin: !secret car1_tesla_vin'. See tesla-ble.example.yml for details.");
+          // EUI-48 (IEEE 802) defines a 48-bit MAC address as 6 colon-separated hex octets (XX:XX:XX:XX:XX:XX):
+          // 12 hex digits + 5 colons = 17 characters, so sizeof == 18 including the null terminator.
+          static_assert(sizeof("$ble_mac_address") == 18,
+              "CONFIG ERROR: 'ble_mac_address' is not set or is not in XX:XX:XX:XX:XX:XX format. "
+              "Single car: add 'ble_mac_address: !secret ble_mac_address' to your substitutions and "
+              "'ble_mac_address: AA:BB:CC:DD:EE:FF' to secrets.yaml. "
+              "Multiple cars: use a unique secret name per device, e.g. "
+              "'ble_mac_address: !secret car1_ble_mac_address'. See tesla-ble.example.yml for details.");
+
+substitutions:
+  charging_amps_max: "32"
+
 ble_client:
   - mac_address: $ble_mac_address
     id: ble_tesla_id
