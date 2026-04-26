@@ -60,7 +60,7 @@ namespace esphome
 
     void TeslaBLEVehicle::openNVSHandle()
     {
-      esp_err_t err = nvs_open("storage", NVS_READWRITE, &this->storage_handle_);
+      esp_err_t err = nvs_open(this->nvs_namespace_, NVS_READWRITE, &this->storage_handle_);
       if (err != ESP_OK)
       {
         ESP_LOGE(TAG, "Failed to open NVS handle: %s", esp_err_to_name(err));
@@ -1193,6 +1193,12 @@ if (ble_disconnected_ != BleConnected) // While disconnected update duration of 
       return 0;
     }
 
+    void TeslaBLEVehicle::set_nvs_namespace(const char *ns)
+    {
+      snprintf(this->nvs_namespace_, sizeof(this->nvs_namespace_), "%s", ns);
+      ESP_LOGI(TAG, "NVS namespace: %s", this->nvs_namespace_);
+    }
+
     void TeslaBLEVehicle::set_vin(const char *vin)
     {
       tesla_ble_client_->setVIN(vin);
@@ -1233,7 +1239,7 @@ if (ble_disconnected_ != BleConnected) // While disconnected update duration of 
         ESP_LOGE(TAG, "Failed to initialize flash: %s", esp_err_to_name(err));
       }
 
-      err = nvs_open("storage", NVS_READWRITE, &this->storage_handle_);
+      err = nvs_open(this->nvs_namespace_, NVS_READWRITE, &this->storage_handle_);
       if (err != ESP_OK)
       {
         ESP_LOGE(TAG, "Failed to open NVS handle: %s", esp_err_to_name(err));
