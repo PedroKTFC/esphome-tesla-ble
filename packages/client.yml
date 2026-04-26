@@ -7,6 +7,15 @@ ble_client:
   - mac_address: $ble_mac_address
     id: ble_tesla_id
 
+binary_sensor:
+  - platform: ble_presence
+    id: esphome_tesla_ble_ble_status
+    mac_address: $ble_mac_address
+    device_class: connectivity
+    name: "BLE Status"
+    entity_category: diagnostic
+    timeout: $ble_presence_timeout
+
 tesla_ble_vehicle:
   ble_client_id: ble_tesla_id
   id: tesla_ble_vehicle_id

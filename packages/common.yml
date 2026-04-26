@@ -15,13 +15,6 @@ binary_sensor:
   - platform: status
     id: esphome_tesla_ble_status
     name: "Status"
-  - platform: ble_presence
-    id: esphome_tesla_ble_ble_status
-    mac_address: $ble_mac_address
-    device_class: connectivity
-    name: "BLE Status"
-    entity_category: diagnostic
-    timeout: $ble_presence_timeout
 
 text_sensor:
   - platform: version
