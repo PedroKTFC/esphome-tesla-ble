@@ -487,7 +487,7 @@ namespace esphome
         }
         else
         {
-          ESP_LOGD(TAG, "BLE RX: Buffered chunk, waiting for more data.. (%d/%d): %s", this->ble_read_buffer_.size(), 2 + message_length, format_hex(this->ble_read_buffer_.data(), this->ble_read_buffer_.size()).c_str());
+          ESP_LOGW(TAG, "BLE RX: Buffered chunk, waiting for more data.. (%d/%d): %s", this->ble_read_buffer_.size(), 2 + message_length, format_hex(this->ble_read_buffer_.data(), this->ble_read_buffer_.size()).c_str());
           return;
         }
       }
