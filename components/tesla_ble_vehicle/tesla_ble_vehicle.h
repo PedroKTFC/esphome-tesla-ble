@@ -182,6 +182,7 @@ namespace esphome
             BLETXChunk(std::vector<unsigned char> d, esp_gatt_write_type_t wt, esp_gatt_auth_req_t ar)
                 : data(d), write_type(wt), auth_req(ar) {}
         };
+bollocks!!!
         struct BLERXChunk
         {
             std::vector<unsigned char> buffer;
