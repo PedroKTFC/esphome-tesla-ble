@@ -327,7 +327,19 @@ namespace esphome
 
             int writeBLE(const unsigned char *message_buffer, size_t message_length,
                          esp_gatt_write_type_t write_type, esp_gatt_auth_req_t auth_req);
-
+    inline void pop_command_and_tidy_up ()
+    /*
+    *   Processing of the current command has completed (including it failing). It needs to be popped off the queue
+    *   and any other tidying up carried out (eg emptying the read and response queues).
+    */
+    {
+      command_queue_.pop();
+      ble_read_buffer_.clear();         // Clear anything that's been received and not processed
+      if (!response_queue_.empty())           // Empty the response queue if there's anything in it
+      {
+        response_queue_.pop();
+      }
+    }
             inline const ActionMessageDetail& get_action_detail (BLE_CarServer_VehicleAction action)
             { // Get the entry in the ACTION_SPECIFICS table corresponding to the action (we can't be sure of the order)
                 return ACTION_SPECIFICS[static_cast<size_t>(action)];
