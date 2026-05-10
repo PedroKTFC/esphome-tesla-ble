@@ -302,6 +302,32 @@ switch:
       - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_HVAC_STEERING_HEATER_SWITCH, 0);
   
   - platform: template
+    id: sw_low_power_mode
+    name: "Low power mode"
+    optimistic: true
+    icon: mdi:power-sleep
+    assumed_state: true # we can't read the state 
+    restore_mode: RESTORE_DEFAULT_OFF
+    disabled_by_default: true
+    turn_on_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_LOW_POWER_MODE_SWITCH, 1);
+    turn_off_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_LOW_POWER_MODE_SWITCH, 0);
+  
+  - platform: template
+    id: sw_keep_accessory_power_on
+    name: "Keep accessorry power on"
+    optimistic: true
+    icon: mdi:usb
+    assumed_state: true # we can't read the state 
+    restore_mode: RESTORE_DEFAULT_OFF
+    disabled_by_default: true
+    turn_on_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_KEEP_ACCESSORY_SWITCH, 1);
+    turn_off_action:
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_KEEP_ACCESSORY_SWITCH, 0);
+  
+  - platform: template
     id: sw_defrost_car
     name: Defrost car
     optimistic: true
