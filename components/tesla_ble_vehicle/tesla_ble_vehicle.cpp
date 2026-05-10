@@ -2184,16 +2184,9 @@ if (ble_disconnected_ != BleConnected) // While disconnected update duration of 
         break;
       }
 
-      case ESP_GATTS_READ_EVT:
+      case ESP_GATTC_UNREG_EVT:
       {
-        if (param->read.conn_id != this->parent()->get_conn_id())
-          break;
-        if (param->read.status != ESP_GATT_OK)
-        {
-          ESP_LOGW(TAG, "Error reading char at handle %d, status=%d", param->read.handle, param->read.status);
-          break;
-        }
-        ESP_LOGD(TAG, "ESP_GATTS_READ_EVT ");
+        ESP_LOGD(TAG, "ESP_GATTC_UNREG_EVT ");
         break;
       }
 
