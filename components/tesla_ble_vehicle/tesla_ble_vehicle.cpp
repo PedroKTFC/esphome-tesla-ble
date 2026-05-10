@@ -395,11 +395,11 @@ namespace esphome
         {
           ESP_LOGW(TAG, "[%s] Timed out while waiting for command response", current_command.execute_name.c_str());
           current_command.state = BLECommandState::READY; // Maybe retry if too many attempts haven't been tried
-this->ble_read_buffer_.clear();         // Clear anything that's been received
-if (!response_queue_.empty())           // Empty the response queue if there's anything in it
-{
-  response_queue_.pop();
-}
+          this->ble_read_buffer_.clear();         // Clear anything that's been received
+          if (!response_queue_.empty())           // Empty the response queue if there's anything in it
+          {
+            response_queue_.pop();
+          }
         }
         break;
       case BLECommandState::WAITING_FOR_GET_POST_SET:
@@ -466,7 +466,6 @@ if (!response_queue_.empty())           // Empty the response queue if there's a
 
       BLERXChunk chunk_ = this->ble_read_queue_.front();
       ESP_LOGV(TAG, "BLE RX chunk: %s", format_hex(chunk_.buffer.data(), chunk_.buffer.size()).c_str());
-ESP_LOGW (TAG, "Chunk buffer size: %i, capacity: %i", chunk_.buffer.size(), chunk_.buffer.capacity());
 
       // check we are not overflowing the buffer before appending data
       size_t buffer_len_post_append = chunk_.buffer.size() + this->ble_read_buffer_.size();
@@ -482,7 +481,6 @@ ESP_LOGW (TAG, "Chunk buffer size: %i, capacity: %i", chunk_.buffer.size(), chun
       // Append the new data
       ESP_LOGV(TAG, "BLE RX: Appending new data to read buffer");
       this->ble_read_buffer_.insert(this->ble_read_buffer_.end(), chunk_.buffer.begin(), chunk_.buffer.end());
-ESP_LOGW (TAG, "Read buffer size: %i, capacity: %i", this->ble_read_buffer_.size(), this->ble_read_buffer_.capacity());
       this->ble_read_queue_.pop();
 
       if (this->ble_read_buffer_.size() >= 2)
@@ -510,7 +508,7 @@ ESP_LOGW (TAG, "Read buffer size: %i, capacity: %i", this->ble_read_buffer_.size
       {
         this->ble_read_buffer_.clear();         // This will set the size to 0 
         ESP_LOGW(TAG, "BLE RX: Failed to parse incoming message");
-return; // Parsing has failed so don't add it to the response queue and let the command time out
+        return; // Parsing has failed so don't add it to the response queue and let the command time out
       }
       ESP_LOGD(TAG, "BLE RX: Parsed UniversalMessage");
       // clear read buffer
@@ -940,12 +938,10 @@ return; // Parsing has failed so don't add it to the response queue and let the 
           ble_disconnected_ = BleDisconnectedUnknownsSet;
         }
       }
-
-if (ble_disconnected_ != BleConnected) // While disconnected update duration of disconnection
-{
-  publishSensor (NumericSensorId::BleDisconnectedTime, (millis() - ble_disconnected_time_) / 1000);
-}
-
+      if (ble_disconnected_ != BleConnected) // While disconnected update duration of disconnection
+      {
+        publishSensor (NumericSensorId::BleDisconnectedTime, (millis() - ble_disconnected_time_) / 1000);
+      }
       if (this->node_state == espbt::ClientState::ESTABLISHED)
       {
         ESP_LOGD(TAG, "Querying vehicle status update..");
