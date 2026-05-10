@@ -135,7 +135,7 @@ namespace esphome
 
         static const int PRIVATE_KEY_SIZE = 228;
         static const int PUBLIC_KEY_SIZE = 65;
-        static const int MAX_BLE_MESSAGE_SIZE = 4608; // Max size of a BLE message
+        static const int MAX_BLE_MESSAGE_SIZE = 4096; // Max size of a BLE message
         static const int RX_TIMEOUT = 1 * 1000;       // Timeout interval between receiving chunks of a message (1s)
         static const int MAX_LATENCY = 4 * 1000;      // Max allowed error when syncing vehicle clock (4s)
         static const int BLOCK_LENGTH = 20;           // BLE MTU is 23 bytes, so we need to split the message into chunks (20 bytes as in vehicle_command)
@@ -188,7 +188,9 @@ namespace esphome
             uint32_t received_at = millis();
 
             BLERXChunk(std::vector<unsigned char> b)
-                : buffer(b) {}
+                : buffer(std::move(b)) {}
+            BLERXChunk(const unsigned char* begin, const unsigned char* end)
+                : buffer(begin, end) {}
         };
         struct BLEResponse
         {
@@ -325,7 +327,19 @@ namespace esphome
 
             int writeBLE(const unsigned char *message_buffer, size_t message_length,
                          esp_gatt_write_type_t write_type, esp_gatt_auth_req_t auth_req);
-
+    inline void pop_command_and_tidy_up ()
+    /*
+    *   Processing of the current command has completed (including it failing). It needs to be popped off the queue
+    *   and any other tidying up carried out (eg emptying the read and response queues).
+    */
+    {
+      command_queue_.pop();
+      ble_read_buffer_.clear();         // Clear anything that's been received and not processed
+      if (!response_queue_.empty())           // Empty the response queue if there's anything in it
+      {
+        response_queue_.pop();
+      }
+    }
             inline const ActionMessageDetail& get_action_detail (BLE_CarServer_VehicleAction action)
             { // Get the entry in the ACTION_SPECIFICS table corresponding to the action (we can't be sure of the order)
                 return ACTION_SPECIFICS[static_cast<size_t>(action)];
