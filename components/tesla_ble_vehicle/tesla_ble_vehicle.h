@@ -61,6 +61,8 @@ namespace esphome
             MEDIA_PLAY,
             MEDIA_NEXT_TRACK,
             MEDIA_PREVIOUS_TRACK,
+            SET_LOW_POWER_MODE_SWITCH,
+            SET_KEEP_ACCESSORY_SWITCH,
             _COUNT  // sentinel value to get count of entries
         };
         enum class AllowedMsg // The type of messages to send
@@ -98,7 +100,7 @@ namespace esphome
             GetOnSet getOnSet;
             int numberUpdatesBetweenGets; // Only used for GetVehicleDataMessage
         };
-        static constexpr std::array<ActionMessageDetail, 23> ACTION_SPECIFICS // Don't forget to increase the size when adding a row
+        static constexpr std::array<ActionMessageDetail, 25> ACTION_SPECIFICS // Don't forget to increase the size when adding a row
         {{
             {BLE_CarServer_VehicleAction::DO_NOTHING,                       "",                          AllowedMsg::Empty,                 0,                                                              GetOnSet::Invalid,         0},
             {BLE_CarServer_VehicleAction::GET_CHARGE_STATE,                 "getChargeState",            AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getChargeState_tag,                    GetOnSet::Invalid,         1},
@@ -122,7 +124,9 @@ namespace esphome
             {BLE_CarServer_VehicleAction::SET_CLIMATE_TEMP,                 "setClimateTemp",            AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_hvacTemperatureAdjustmentAction_tag,    GetOnSet::GetClimateState, 0},
             {BLE_CarServer_VehicleAction::MEDIA_PLAY,                       "mediaPlay",                 AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_mediaPlayAction_tag,                    GetOnSet::Invalid,         0},
             {BLE_CarServer_VehicleAction::MEDIA_NEXT_TRACK,                 "mediaNextTrack",            AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_mediaNextTrack_tag,                     GetOnSet::Invalid,         0},
-            {BLE_CarServer_VehicleAction::MEDIA_PREVIOUS_TRACK,             "mediaPreviousTrack",        AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_mediaPreviousTrack_tag,                 GetOnSet::Invalid,         0}
+            {BLE_CarServer_VehicleAction::MEDIA_PREVIOUS_TRACK,             "mediaPreviousTrack",        AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_mediaPreviousTrack_tag,                 GetOnSet::Invalid,         0},
+            {BLE_CarServer_VehicleAction::SET_LOW_POWER_MODE_SWITCH,        "setLowPowerModeSwitch",     AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_setLowPowerModeAction_tag,              GetOnSet::Invalid,         0},
+            {BLE_CarServer_VehicleAction::SET_KEEP_ACCESSORY_SWITCH,        "setKeepAccessorySwitch",    AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_setKeepAccessoryPowerModeAction_tag,  	GetOnSet::Invalid,         0},
         }};
         static_assert(ACTION_SPECIFICS.size() == static_cast<std::size_t>(BLE_CarServer_VehicleAction::_COUNT), "ACTION_SPECIFICS out of sync with enum");
         static const char *const TAG = "tesla_ble_vehicle";
@@ -135,7 +139,7 @@ namespace esphome
 
         static const int PRIVATE_KEY_SIZE = 228;
         static const int PUBLIC_KEY_SIZE = 65;
-        static const int MAX_BLE_MESSAGE_SIZE = 4608; // Max size of a BLE message
+        static const int MAX_BLE_MESSAGE_SIZE = 4096; // Max size of a BLE message
         static const int RX_TIMEOUT = 1 * 1000;       // Timeout interval between receiving chunks of a message (1s)
         static const int MAX_LATENCY = 4 * 1000;      // Max allowed error when syncing vehicle clock (4s)
         static const int BLOCK_LENGTH = 20;           // BLE MTU is 23 bytes, so we need to split the message into chunks (20 bytes as in vehicle_command)
@@ -188,7 +192,9 @@ namespace esphome
             uint32_t received_at = millis();
 
             BLERXChunk(std::vector<unsigned char> b)
-                : buffer(b) {}
+                : buffer(std::move(b)) {}
+            BLERXChunk(const unsigned char* begin, const unsigned char* end)
+                : buffer(begin, end) {}
         };
         struct BLEResponse
         {
@@ -325,7 +331,19 @@ namespace esphome
 
             int writeBLE(const unsigned char *message_buffer, size_t message_length,
                          esp_gatt_write_type_t write_type, esp_gatt_auth_req_t auth_req);
-
+    inline void pop_command_and_tidy_up ()
+    /*
+    *   Processing of the current command has completed (including it failing). It needs to be popped off the queue
+    *   and any other tidying up carried out (eg emptying the read and response queues).
+    */
+    {
+      command_queue_.pop();
+      ble_read_buffer_.clear();         // Clear anything that's been received and not processed
+      if (!response_queue_.empty())           // Empty the response queue if there's anything in it
+      {
+        response_queue_.pop();
+      }
+    }
             inline const ActionMessageDetail& get_action_detail (BLE_CarServer_VehicleAction action)
             { // Get the entry in the ACTION_SPECIFICS table corresponding to the action (we can't be sure of the order)
                 return ACTION_SPECIFICS[static_cast<size_t>(action)];

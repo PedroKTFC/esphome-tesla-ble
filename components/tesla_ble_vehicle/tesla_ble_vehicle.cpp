@@ -106,7 +106,8 @@ namespace esphome
       if ((now - current_command.started_at) > COMMAND_TIMEOUT)
       {
         ESP_LOGW(TAG, "[%s] Command timed out after %d ms with %d commands in the queue", current_command.execute_name.c_str(), COMMAND_TIMEOUT, command_queue_.size());
-        command_queue_.pop();
+//        command_queue_.pop();
+        pop_command_and_tidy_up ();
         return;
       }
       switch (current_command.state)
@@ -120,7 +121,8 @@ namespace esphome
         if (binary_sensors_[static_cast<size_t>(BinarySensorId::IsAsleep)]->state && (current_command.execute_name.find("get") == 0))
         {
           ESP_LOGI(TAG, "[%s] Car is asleep, don't wake for a 'get' command", current_command.execute_name.c_str());
-          command_queue_.pop();
+//          command_queue_.pop();
+          pop_command_and_tidy_up ();
           return;
         }
         current_command.started_at = now;
@@ -158,8 +160,8 @@ namespace esphome
               break;
             case UniversalMessage_Domain_DOMAIN_BROADCAST:
               ESP_LOGE(TAG, "[%s] Invalid state: VCSEC authenticated but no auth required", current_command.execute_name.c_str());
-              // pop command
-              command_queue_.pop();
+//              command_queue_.pop();
+              pop_command_and_tidy_up ();
               return;
             }
             break;
@@ -179,14 +181,13 @@ namespace esphome
             else
             {
               ESP_LOGE(TAG, "[%s] Failed to authenticate VCSEC after %d retries, giving up", current_command.execute_name.c_str(), MAX_RETRIES);
-              // pop command
-              command_queue_.pop();
+              pop_command_and_tidy_up ();
+//              command_queue_.pop();
               return;
             }
           }
         }
         break;
-
       case BLECommandState::WAITING_FOR_VCSEC_AUTH_RESPONSE:
         if (now - current_command.last_tx_at > MAX_LATENCY)
         {
@@ -194,7 +195,6 @@ namespace esphome
           current_command.state = BLECommandState::WAITING_FOR_VCSEC_AUTH;
         }
         break;
-
       case BLECommandState::WAITING_FOR_INFOTAINMENT_AUTH:
         if (now - current_command.last_tx_at > MAX_LATENCY)
         {
@@ -226,23 +226,22 @@ namespace esphome
               else
               {
                 ESP_LOGE(TAG, "[%s] Failed INFOTAINMENT auth after %d retries, giving up", current_command.execute_name.c_str(), MAX_RETRIES);
-                // pop command
-                command_queue_.pop();
+//                command_queue_.pop();
+                pop_command_and_tidy_up ();
                 return;
               }
             }
           }
         }
         break;
-
       case BLECommandState::WAITING_FOR_WAKE:
         if ((now - current_command.last_tx_at) > MAX_LATENCY)
         {
           if (current_command.retry_count > MAX_RETRIES)
           {
             ESP_LOGE(TAG, "[%s] Failed to wake vehicle after %d retries", current_command.execute_name.c_str(), MAX_RETRIES);
-            // pop command
-            command_queue_.pop();
+//            command_queue_.pop();
+            pop_command_and_tidy_up ();
             return;
           }
           else
@@ -259,7 +258,6 @@ namespace esphome
           }
         }
         break;
-
       case BLECommandState::WAITING_FOR_WAKE_RESPONSE:
         if ((now - current_command.last_tx_at) > MAX_LATENCY)
         {
@@ -267,8 +265,9 @@ namespace esphome
           {
             if (strcmp(current_command.execute_name.c_str(), "wake vehicle") == 0) {
               ESP_LOGD(TAG, "[%s] Vehicle is awake, command completed", current_command.execute_name.c_str());
-              command_queue_.pop();
-              return;
+//              command_queue_.pop();
+            pop_command_and_tidy_up ();
+            return;
             }
             else {
               ESP_LOGD(TAG, "[%s] Vehicle is awake, waiting for infotainment auth", current_command.execute_name.c_str());
@@ -304,8 +303,8 @@ namespace esphome
             if (current_command.retry_count > MAX_RETRIES)
             {
               ESP_LOGE(TAG, "[%s] Failed to wake up vehicle after %d retries", current_command.execute_name.c_str(), MAX_RETRIES);
-              // pop command
-              command_queue_.pop();
+//              command_queue_.pop();
+              pop_command_and_tidy_up ();
               return;
             }
           }
@@ -321,7 +320,8 @@ namespace esphome
             ((binary_sensors_[static_cast<size_t>(BinarySensorId::IsUnlocked)]->state == false) and (strcmp(current_command.execute_name.c_str(), "lock vehicle") == 0)))
         {
           ESP_LOGI (TAG, "[%s] Vehicle is (un)locked as required so command completed", current_command.execute_name.c_str());
-          command_queue_.pop();
+//          command_queue_.pop();
+          pop_command_and_tidy_up ();
           return;
         }
         else if ((current_command.done_times == 0) and ((now - current_command.last_tx_at) > RX_TIMEOUT)) 
@@ -347,7 +347,6 @@ namespace esphome
           current_command.retry_count++;
         }
         break;
-
       case BLECommandState::READY:
         // Ready to send a command
         if (now - current_command.last_tx_at > MAX_LATENCY)
@@ -356,7 +355,8 @@ namespace esphome
           if (current_command.retry_count > MAX_RETRIES)
           {
             ESP_LOGE(TAG, "[%s] Failed to execute command after %d retries, giving up", current_command.execute_name.c_str(), MAX_RETRIES);
-            command_queue_.pop();
+//            command_queue_.pop();
+            pop_command_and_tidy_up ();
             return;
           }
           else
@@ -391,10 +391,15 @@ namespace esphome
         }
         break;
       case BLECommandState::WAITING_FOR_RESPONSE:
-        if (now - current_command.last_tx_at > MAX_LATENCY)
+        if ((now - current_command.last_tx_at) > MAX_LATENCY)
         {
           ESP_LOGW(TAG, "[%s] Timed out while waiting for command response", current_command.execute_name.c_str());
-          current_command.state = BLECommandState::READY;
+          current_command.state = BLECommandState::READY; // Maybe retry if too many attempts haven't been tried
+          this->ble_read_buffer_.clear();         // Clear anything that's been received
+          if (!response_queue_.empty())           // Empty the response queue if there's anything in it
+          {
+            response_queue_.pop();
+          }
         }
         break;
       case BLECommandState::WAITING_FOR_GET_POST_SET:
@@ -422,7 +427,8 @@ namespace esphome
             default:
               break; // do nothing
           }
-          command_queue_.pop(); // The command is complete
+//          command_queue_.pop(); // The command is complete
+          pop_command_and_tidy_up ();
           return;
         }
         break;
@@ -502,6 +508,7 @@ namespace esphome
       {
         this->ble_read_buffer_.clear();         // This will set the size to 0 
         ESP_LOGW(TAG, "BLE RX: Failed to parse incoming message");
+        return; // Parsing has failed so don't add it to the response queue and let the command time out
       }
       ESP_LOGD(TAG, "BLE RX: Parsed UniversalMessage");
       // clear read buffer
@@ -931,12 +938,10 @@ namespace esphome
           ble_disconnected_ = BleDisconnectedUnknownsSet;
         }
       }
-
-if (ble_disconnected_ != BleConnected) // While disconnected update duration of disconnection
-{
-  publishSensor (NumericSensorId::BleDisconnectedTime, (millis() - ble_disconnected_time_) / 1000);
-}
-
+      if (ble_disconnected_ != BleConnected) // While disconnected update duration of disconnection
+      {
+        publishSensor (NumericSensorId::BleDisconnectedTime, (millis() - ble_disconnected_time_) / 1000);
+      }
       if (this->node_state == espbt::ClientState::ESTABLISHED)
       {
         ESP_LOGD(TAG, "Querying vehicle status update..");
@@ -2175,16 +2180,9 @@ if (ble_disconnected_ != BleConnected) // While disconnected update duration of 
         break;
       }
 
-      case ESP_GATTS_READ_EVT:
+      case ESP_GATTC_UNREG_EVT:
       {
-        if (param->read.conn_id != this->parent()->get_conn_id())
-          break;
-        if (param->read.status != ESP_GATT_OK)
-        {
-          ESP_LOGW(TAG, "Error reading char at handle %d, status=%d", param->read.handle, param->read.status);
-          break;
-        }
-        ESP_LOGD(TAG, "ESP_GATTS_READ_EVT ");
+        ESP_LOGD(TAG, "ESP_GATTC_UNREG_EVT ");
         break;
       }
 
@@ -2261,8 +2259,8 @@ if (ble_disconnected_ != BleConnected) // While disconnected update duration of 
         }
         ESP_LOGV(TAG, "RAM left: %ld, minimum was: %ld", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
         // copy notify value to buffer
-        std::vector<unsigned char> buffer(param->notify.value, param->notify.value + param->notify.value_len);
-        ble_read_queue_.emplace(buffer);
+//        std::vector<unsigned char> buffer(param->notify.value, param->notify.value + param->notify.value_len);
+        ble_read_queue_.emplace(param->notify.value, param->notify.value + param->notify.value_len);
         break;
       }
 

@@ -6,12 +6,13 @@ substitutions:
   BLE_library: "https://github.com/PedroKTFC/tesla-ble.git"
   tesla_ble_component: "github://PedroKTFC/esphome-tesla-ble"
   ble_presence_timeout: 30s
+  ble_components: [tesla_ble_vehicle]
 
 esphome:
   project:
     name: PedroKTFC.esphome-tesla-ble
-    version: "2026.4.0"
-  name: ${device_name}
+    version: "2026.5.0-dev-2"
+    name: ${device_name}
   name_add_mac_suffix: false
   friendly_name: ${friendly_name}
   libraries:
@@ -26,18 +27,19 @@ esp32:
 
 external_components:
   - source: $tesla_ble_component
-    components: [tesla_ble_vehicle, tesla_ble_listener]
+    components: $ble_components
 
 logger:
   level: INFO
 
 ota:
   platform: esphome
-  password: !secret ota_password
+#  password: !secret ota_password
 
 wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
+  networks:
+    - ssid: !secret wifi_ssid
+      password: !secret wifi_password
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     password: !secret wifi_hotspot_password
