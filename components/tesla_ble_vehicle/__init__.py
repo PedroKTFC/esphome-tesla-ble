@@ -154,6 +154,8 @@ for key, spec in SENSORS.items():
     builder = SENSOR_TYPES_INFO[spec.type]["schema"]
     schema_dict[cv.Optional(key)] = (builder(**spec.schema_options))
 
+MULTI_CONF = True
+
 CONFIG_SCHEMA = (
     cv.Schema(schema_dict)
     .extend(cv.polling_component_schema("1min"))
@@ -163,6 +165,10 @@ async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     await ble_client.register_ble_node(var, config)
+
+    component_id = str(config[CONF_ID])
+    nvs_namespace = "storage" if component_id == "tesla_ble_vehicle_id" else component_id[:15]
+    cg.add(var.set_nvs_namespace(nvs_namespace))
 
     cg.add(var.set_vin(config[CONF_VIN]))
 

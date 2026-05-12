@@ -1,0 +1,85 @@
+substitutions:
+  # Note substitutions in your yaml will override those here
+  friendly_name: Tesla BLE Dual
+  device_name: tesla-ble-dual
+  device_description: Tesla BLE Dual Car Setup
+
+# The following shows the default board and variant settings.
+# Uncomment and changing them is only needed if they are not appropriate for your board (see read.me documentation for support):
+  #board: "esp32dev"
+  #variant: "ESP32"
+
+api:
+  encryption:
+    key: xxxxxxxxxxxxx= # use "key: !secret your_secret_key_name" for greater security
+
+# Uncomment if you want to use ethernet instead
+# See https://esphome.io/components/ethernet/ for actual configuration you will need
+# ethernet:
+#   type: LAN8720
+#   ...
+# wifi: !remove
+# sensor:
+#   - id: !remove esphome_tesla_ble_wifi_signal
+# text_sensor:
+#   - id: !remove esphome_wifi_ip_address
+# esp32_ble_tracker:
+#   scan_parameters:
+#     continuous: true
+
+packages:
+  base_packages:
+    url: https://github.com/PedroKTFC/esphome-tesla-ble/
+    files:
+      - packages/base.yml
+      - packages/common.yml
+      - packages/project.yml
+  #    - packages/listener.yml  # Uncomment this to scan find your VIN BLE MAC address
+
+  car1:
+    url: https://github.com/PedroKTFC/esphome-tesla-ble/
+    files:
+      - path: packages/client.yml
+        vars:
+          ble_mac_address: !secret car1_ble_mac_address
+          tesla_vin: !secret car1_tesla_vin
+          car_prefix: "car1_"
+          car_name: "Car 1 "
+  #    - path: packages/language_hu.yml # Uncomment this to translate the entity names to your language. If yours is missing, submit a PR here!
+  #      vars:
+  #        car_prefix: "car1_"
+  #        car_name: "Car 1 "
+
+  car2:
+    url: https://github.com/PedroKTFC/esphome-tesla-ble/
+    files:
+      - path: packages/client.yml
+        vars:
+          ble_mac_address: !secret car2_ble_mac_address
+          tesla_vin: !secret car2_tesla_vin
+          car_prefix: "car2_"
+          car_name: "Car 2 "
+  #    - path: packages/language_de.yml # Uncomment this to translate the entity names to your language. If yours is missing, submit a PR here!
+  #      vars:
+  #        car_prefix: "car2_"
+  #        car_name: "Car 2 "
+
+# The following shows how to change the name of a sensor and how to change any of the parameters.
+# Use the car's id prefix (car1_ or car2_) to target a specific car:
+# tesla_ble_vehicle: # THIS LINE MUST BE UNCOMMENTED IF ANY OF THE CHANGES BELOW ARE WANTED
+
+# You can change any sensor name in Home Assistant. However you can also change them here if it is more convenient for you.
+# For a list of all sensors etc, see the file client.yml in the packages directory.
+#  - id: car1_tesla_ble_vehicle_id
+#    odometer: # miles by default, edit the entity in home assistant if you need km
+#      name: "Car 1 Odometro" # Rename if desired
+# End of renaming
+
+# At the time of writing, these are set to the default values. If you require a different value, uncomment and edit the value
+#    update_interval: 10s # Base polling interval, used for VCSEC sensors
+#    post_wake_poll_time: 300 # How long to poll for data after car awakes at poll_data_period speed (s)
+#    poll_data_period: 60 # Polling interval after awakening during post_wake_poll_time interval (s)
+#    poll_charging_period: 10 # Period to poll for data when charging (s)
+#    poll_asleep_period: 60 # Period to poll for data when asleep (s)
+#    ble_disconnected_min_time: 300 # Minimum time BLE must be disconnected before sensors are Unknown (s)
+#    fast_poll_if_unlocked: 1 # if != 0, fast polls are enabled when unlocked

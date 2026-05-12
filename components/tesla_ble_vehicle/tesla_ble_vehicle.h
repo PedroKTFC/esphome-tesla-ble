@@ -290,6 +290,7 @@ namespace esphome
             void gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
                                      esp_ble_gattc_cb_param_t *param) override;
             void dump_config() override;
+            void set_nvs_namespace(const std::string &ns);
             void set_vin(const char *vin);
             void load_polling_parameters (const int post_wake_poll_time, const int poll_data_period,
                                           const int poll_asleep_period, const int poll_charging_period,
@@ -439,6 +440,7 @@ namespace esphome
 
             TeslaBLE::Client *tesla_ble_client_;
             uint32_t storage_handle_;
+            std::string nvs_namespace_;
             uint16_t handle_;
             uint16_t read_handle_{0};
             uint16_t write_handle_{0};

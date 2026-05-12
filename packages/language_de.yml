@@ -2,136 +2,139 @@
 # - localize all names to German terminology
 # - use km. instead of mi for distance units by default
 
+substitutions:
+  car_prefix: ""
+  car_name: ""
 
 tesla_ble_vehicle:
-  is_asleep:
-    name: "Im Ruhezustand"
-  is_user_present:
-    name: "Person erkannt"
-  is_unlocked:
-    name: "Entriegelt"
-  is_charge_flap_open:
-    icon: mdi:ev-plug-ccs2
-    name: "Ladeanschluss"
-  is_boot_open:
-    name: "Kofferraum hinten"
-  is_frunk_open:
-    name: "Kofferraum vorne"
-  shift_state:
-    name: "Schaltstellung"
-  defrost_state:
-    name: "Enteisung"
-  charge_state:
-    name: "Ladezustand"
-  odometer:
-    name: "Kilometerstand"
-    filters:
-      - multiply: 1.609344
-    unit_of_measurement: km
-  charge_current:
-    name: "Ladestrom"
-  charge_voltage:
-    name: "Ladespannung"
-  charge_power:
-    name: "Ladeleistung"
-  charge_energy_added:
-    name: "Bezogene Energie"
-  charge_distance_added:
-    name: "Reichweitenzuwachs"
-    filters:
-      - multiply: 1.609344
-    unit_of_measurement: km
-  max_soc:
-    name: "Ladelimit"
-  max_amps:
-    name: "Strombegrenzung"
-  mins_to_limit:
-    name: "Zeit bis Ladeende"
-  battery_range:
-    name: "Reichweite"
-    filters:
-      - multiply: 1.609344
-    unit_of_measurement: km
-  charging_state:
-    name: "Ladezustand"
-  last_update:
-    name: "Zuletzt aktualisiert"
-  is_climate_on:
-    name: "Klimaanlage"
-  internal_temp:
-    name: "Innenraumtemperatur"
-  external_temp:
-    name: "Außentemperatur"
-  windows_state:
-    name: "Fenster"
-  tpms_pressure_fl:
-    name: "Reifendruck vorne links"
-  tpms_pressure_fr:
-    name: "Reifendruck vorne rechts"
-  tpms_pressure_rl:
-    name: "Reifendruck hinten links"
-  tpms_pressure_rr:
-    name: "Reifendruck hinten rechts"
+  - id: !extend ${car_prefix}tesla_ble_vehicle_id
+    is_asleep:
+      name: "${car_name}Im Ruhezustand"
+    is_user_present:
+      name: "${car_name}Person erkannt"
+    is_unlocked:
+      name: "${car_name}Entriegelt"
+    is_charge_flap_open:
+      icon: mdi:ev-plug-ccs2
+      name: "${car_name}Ladeanschluss"
+    is_boot_open:
+      name: "${car_name}Kofferraum hinten"
+    is_frunk_open:
+      name: "${car_name}Kofferraum vorne"
+    shift_state:
+      name: "${car_name}Schaltstellung"
+    defrost_state:
+      name: "${car_name}Enteisung"
+    charge_state:
+      name: "${car_name}Ladezustand"
+    odometer:
+      name: "${car_name}Kilometerstand"
+      filters:
+        - multiply: 1.609344
+      unit_of_measurement: km
+    charge_current:
+      name: "${car_name}Ladestrom"
+    charge_voltage:
+      name: "${car_name}Ladespannung"
+    charge_power:
+      name: "${car_name}Ladeleistung"
+    charge_energy_added:
+      name: "${car_name}Bezogene Energie"
+    charge_distance_added:
+      name: "${car_name}Reichweitenzuwachs"
+      filters:
+        - multiply: 1.609344
+      unit_of_measurement: km
+    max_soc:
+      name: "${car_name}Ladelimit"
+    max_amps:
+      name: "${car_name}Strombegrenzung"
+    mins_to_limit:
+      name: "${car_name}Zeit bis Ladeende"
+    battery_range:
+      name: "${car_name}Reichweite"
+      filters:
+        - multiply: 1.609344
+      unit_of_measurement: km
+    charging_state:
+      name: "${car_name}Ladezustand"
+    last_update:
+      name: "${car_name}Zuletzt aktualisiert"
+    is_climate_on:
+      name: "${car_name}Klimaanlage"
+    internal_temp:
+      name: "${car_name}Innenraumtemperatur"
+    external_temp:
+      name: "${car_name}Außentemperatur"
+    windows_state:
+      name: "${car_name}Fenster"
+    tpms_pressure_fl:
+      name: "${car_name}Reifendruck vorne links"
+    tpms_pressure_fr:
+      name: "${car_name}Reifendruck vorne rechts"
+    tpms_pressure_rl:
+      name: "${car_name}Reifendruck hinten links"
+    tpms_pressure_rr:
+      name: "${car_name}Reifendruck hinten rechts"
 button:
-  - id: !extend ble_pair
-    name: "BLE-Schlüsselpaarung"
-  - id: !extend btn_wake_up
-    name: "Aufwecken"
-  - id: !extend btn_flash_light
-    name: "Lichthupe"
-  - id: !extend btn_sound_horn
-    name: "Hupen"
-  - id: !extend btn_unlock_charge_port
-    name: "Ladeanschluss entriegeln"
-  - id: !extend btn_unlatch_driver_door
-    name: "Fahrertür öffnen"
-  - id: !extend btn_regenerate_key
-    name: "Schlüssel neu generieren"
-  - id: !extend btn_force_data_update
-    name: "Manuelle Datenaktualisierung"
+  - id: !extend ${car_prefix}ble_pair
+    name: "${car_name}BLE-Schlüsselpaarung"
+  - id: !extend ${car_prefix}btn_wake_up
+    name: "${car_name}Aufwecken"
+  - id: !extend ${car_prefix}btn_flash_light
+    name: "${car_name}Lichthupe"
+  - id: !extend ${car_prefix}btn_sound_horn
+    name: "${car_name}Hupen"
+  - id: !extend ${car_prefix}btn_unlock_charge_port
+    name: "${car_name}Ladeanschluss entriegeln"
+  - id: !extend ${car_prefix}btn_unlatch_driver_door
+    name: "${car_name}Fahrertür öffnen"
+  - id: !extend ${car_prefix}btn_regenerate_key
+    name: "${car_name}Schlüssel neu generieren"
+  - id: !extend ${car_prefix}btn_force_data_update
+    name: "${car_name}Manuelle Datenaktualisierung"
 sensor:
-  - id: !extend ble_signal
-    name: "BLE-Signalstärke"
+  - id: !extend ${car_prefix}ble_signal
+    name: "${car_name}BLE-Signalstärke"
 switch:
-  - id: !extend sw_charger
-    name: "Laden"
-  - id: !extend sw_sentry_mode
-    name: "Wächtermodus"
-  - id: !extend sw_climate
-    name: "Klimaanlage"
-  - id: !extend sw_steering_wheel_heat
-    name: "Lenkradheizung"
-  - id: !extend sw_defrost_car
-    name: "Enteisung"
-  - id: !extend sw_ble_connection
-    name: "BLE-Verbindung"
-  - id: !extend fast_poll_if_unlocked
-    name: "Schnelle Abfrage bei entriegelt"
+  - id: !extend ${car_prefix}sw_charger
+    name: "${car_name}Laden"
+  - id: !extend ${car_prefix}sw_sentry_mode
+    name: "${car_name}Wächtermodus"
+  - id: !extend ${car_prefix}sw_climate
+    name: "${car_name}Klimaanlage"
+  - id: !extend ${car_prefix}sw_steering_wheel_heat
+    name: "${car_name}Lenkradheizung"
+  - id: !extend ${car_prefix}sw_defrost_car
+    name: "${car_name}Enteisung"
+  - id: !extend ${car_prefix}sw_ble_connection
+    name: "${car_name}BLE-Verbindung"
+  - id: !extend ${car_prefix}fast_poll_if_unlocked
+    name: "${car_name}Schnelle Abfrage bei entriegelt"
 lock:
-  - id: !extend lock_car
-    name: "Auto verriegeln"
+  - id: !extend ${car_prefix}lock_car
+    name: "${car_name}Auto verriegeln"
 cover:
-  - id: !extend cov_vent
-    name: "Belüftung"
-  - id: !extend cov_charge_port
-    name: "Ladeanschluss"
-  - id: !extend cov_boot
-    name: "Kofferraum hinten"
-  - id: !extend cov_frunk
-    name: "Kofferraum vorne"
+  - id: !extend ${car_prefix}cov_vent
+    name: "${car_name}Belüftung"
+  - id: !extend ${car_prefix}cov_charge_port
+    name: "${car_name}Ladeanschluss"
+  - id: !extend ${car_prefix}cov_boot
+    name: "${car_name}Kofferraum hinten"
+  - id: !extend ${car_prefix}cov_frunk
+    name: "${car_name}Kofferraum vorne"
 number:
-  - id: !extend charging_amps
-    name: "Ladestrom"
-  - id: !extend charging_limit
-    name: "Ladelimit"
-  - id: !extend post_wake_poll_time
-    name: "Abfrageintervall nach Aufwecken"
-  - id: !extend poll_data_period
-    name: "Standard-Abfrageintervall"
-  - id: !extend poll_asleep_period
-    name: "Abfrageintervall im Ruhezustand"
-  - id: !extend poll_charging_period
-    name: "Abfrageintervall beim Laden"
-  - id: !extend ble_disconnected_min_time
-
-    name: "Min. Zeit für BLE-Trennung"
+  - id: !extend ${car_prefix}charging_amps
+    name: "${car_name}Ladestrom"
+  - id: !extend ${car_prefix}charging_limit
+    name: "${car_name}Ladelimit"
+  - id: !extend ${car_prefix}post_wake_poll_time
+    name: "${car_name}Abfrageintervall nach Aufwecken"
+  - id: !extend ${car_prefix}poll_data_period
+    name: "${car_name}Standard-Abfrageintervall"
+  - id: !extend ${car_prefix}poll_asleep_period
+    name: "${car_name}Abfrageintervall im Ruhezustand"
+  - id: !extend ${car_prefix}poll_charging_period
+    name: "${car_name}Abfrageintervall beim Laden"
+  - id: !extend ${car_prefix}ble_disconnected_min_time
+    name: "${car_name}Min. Zeit für BLE-Trennung"

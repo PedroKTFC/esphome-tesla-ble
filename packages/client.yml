@@ -2,318 +2,329 @@ substitutions:
   ble_mac_address: !secret ble_mac_address
   tesla_vin: !secret tesla_vin
   charging_amps_max: "32"
+  car_prefix: ""
+  car_name: ""
 
 ble_client:
   - mac_address: $ble_mac_address
-    id: ble_tesla_id
+    id: ${car_prefix}ble_tesla_id
+
+binary_sensor:
+  - platform: ble_presence
+    id: ${car_prefix}esphome_tesla_ble_ble_status
+    mac_address: $ble_mac_address
+    device_class: connectivity
+    name: "${car_name}BLE Status"
+    entity_category: diagnostic
+    timeout: $ble_presence_timeout
 
 tesla_ble_vehicle:
-  ble_client_id: ble_tesla_id
-  id: tesla_ble_vehicle_id
-  vin: $tesla_vin
-  update_interval: 10s # default
-  post_wake_poll_time: 300 # How long to poll for data after car awakes (s)
-  poll_data_period: 60 # Normal period when polling for data when not asleep (s)
-  poll_asleep_period: 60 # Period to poll for data when asleep (s)
-  poll_charging_period: 10 # Period to poll for data when charging (s)
-  ble_disconnected_min_time: 300 # Minimum time BLE must be disconnected before sensors are Unknwon (s)
-  fast_poll_if_unlocked: 0 # if != 0, fast polls are enabled when unlocked
-  wake_on_boot: 0 # != 0 wakes car on device boot
+  - ble_client_id: ${car_prefix}ble_tesla_id
+    id: ${car_prefix}tesla_ble_vehicle_id
+    vin: $tesla_vin
+    update_interval: 10s # default
+    post_wake_poll_time: 300 # How long to poll for data after car awakes (s)
+    poll_data_period: 60 # Normal period when polling for data when not asleep (s)
+    poll_asleep_period: 60 # Period to poll for data when asleep (s)
+    poll_charging_period: 10 # Period to poll for data when charging (s)
+    ble_disconnected_min_time: 300 # Minimum time BLE must be disconnected before sensors are Unknwon (s)
+    fast_poll_if_unlocked: 0 # if != 0, fast polls are enabled when unlocked
+    wake_on_boot: 0 # != 0 wakes car on device boot
 
-  is_asleep:
-    id: "is_asleep"
-    name: "Asleep"
-  is_user_present:
-    id: "is_user_present"
-    name: "User presence"
-  is_unlocked:
-    id: "is_unlocked"
-    name: "Doors"
-  is_charge_flap_open:
-    id: "is_charge_flap_open"
-    name: "Charge flap"
-  is_boot_open:
-    id: "is_boot_open"
-    name: "Boot"
-  is_frunk_open:
-    id: "is_frunk_open"
-    name: "Frunk"
-  shift_state:
-    id: "shift_state"
-    name: "Shift state"
-  defrost_state:
-    id: "defrost_state"
-    name: "Defrost state"
-  charge_state:
-    id: "charge_state"
-    name: "Charge level"
-  odometer:
-    id: "odometer"
-    name: "Odometer"
-    filters:
-      - multiply: 0.01 # Odometer is in hundredths of a mile (can use this to convert to km)
-  charge_current:
-    id: "charge_current"
-    name: "Charge current"
-  charge_voltage:
-    id: "charge_voltage"
-    name: "Charge voltage"  
-  charge_power:
-    id: "charge_power"
-    name: "Charge power"
-  charge_energy_added:
-    id: "charge_energy_added"
-    name: "Charge energy added"
-  charge_distance_added:
-    id: "charge_distance_added"
-    name: "Charge distance added"
-  max_soc:
-    id: "max_soc"
-    name: "Charge limit"
-  max_amps:
-    id: "max_amps"
-    name: "Current limit"
-  mins_to_limit:
-    id: "mins_to_limit"
-    name: "Minutes to limit"
-  battery_range:
-    id: "battery_range"
-    name: "Range"
-  charging_state:
-    id: "charging_state"
-    name: "Charging state"
-  charge_port_latch_state:
-    id: "charge_port_latch_state"
-    name: "Charge port latch state"
-    disabled_by_default: true
-  last_update:
-    id: "last_update"
-    name: "Last update"
-  is_climate_on:
-    id: "is_climate_on"
-    name: "Climate"
-  internal_temp:
-    id: "internal_temp"
-    name: "Interior"
-  external_temp:
-    id: "external_temp"
-    name: "Exterior"
-  windows_state:
-    id: "windows_state"
-    name: "Windows"
-  tpms_pressure_fl:
-    id: "tpms_pressure_fl"
-    name: "Tyre pressure front left"
-    disabled_by_default: true
-  tpms_pressure_fr:
-    id: "tpms_pressure_fr"
-    name: "Tyre pressure front right"
-    disabled_by_default: true
-  tpms_pressure_rl:
-    id: "tpms_pressure_rl"
-    name: "Tyre pressure rear left"
-    disabled_by_default: true
-  tpms_pressure_rr:
-    id: "tpms_pressure_rr"
-    name: "Tyre pressure rear right"
-    disabled_by_default: true
-  ble_disconnected_time:
-    id: "ble_disconnected_time"
-    name: "BLE disconnected time"
-    disabled_by_default: true
-    entity_category: diagnostic
-  charger_phases:
-    id: "charger_phases"
-    name: "Charger phases"
-    disabled_by_default: true
-    filters:
-      - lambda: |-
-          if (x == 2)
-            return 3;
-          return x;
-  charge_rate:
-    id: "charge_rate"
-    name: "Charge rate"
-    disabled_by_default: true
-  driver_temp:
-    id: "driver_temp"
-    name: "Climate temperature" # although it's the driver side temperature setting, use it for the overall climate setting
-    disabled_by_default: true
+    is_asleep:
+      id: "${car_prefix}is_asleep"
+      name: "${car_name}Asleep"
+    is_user_present:
+      id: "${car_prefix}is_user_present"
+      name: "${car_name}User presence"
+    is_unlocked:
+      id: "${car_prefix}is_unlocked"
+      name: "${car_name}Doors"
+    is_charge_flap_open:
+      id: "${car_prefix}is_charge_flap_open"
+      name: "${car_name}Charge flap"
+    is_boot_open:
+      id: "${car_prefix}is_boot_open"
+      name: "${car_name}Boot"
+    is_frunk_open:
+      id: "${car_prefix}is_frunk_open"
+      name: "${car_name}Frunk"
+    shift_state:
+      id: "${car_prefix}shift_state"
+      name: "${car_name}Shift state"
+    defrost_state:
+      id: "${car_prefix}defrost_state"
+      name: "${car_name}Defrost state"
+    charge_state:
+      id: "${car_prefix}charge_state"
+      name: "${car_name}Charge level"
+    odometer:
+      id: "${car_prefix}odometer"
+      name: "${car_name}Odometer"
+      filters:
+        - multiply: 0.01 # Odometer is in hundredths of a mile (can use this to convert to km)
+    charge_current:
+      id: "${car_prefix}charge_current"
+      name: "${car_name}Charge current"
+    charge_voltage:
+      id: "${car_prefix}charge_voltage"
+      name: "${car_name}Charge voltage"  
+    charge_power:
+      id: "${car_prefix}charge_power"
+      name: "${car_name}Charge power"
+    charge_energy_added:
+      id: "${car_prefix}charge_energy_added"
+      name: "${car_name}Charge energy added"
+    charge_distance_added:
+      id: "${car_prefix}charge_distance_added"
+      name: "${car_name}Charge distance added"
+    max_soc:
+      id: "${car_prefix}max_soc"
+      name: "${car_name}Charge limit"
+    max_amps:
+      id: "${car_prefix}max_amps"
+      name: "${car_name}Current limit"
+    mins_to_limit:
+      id: "${car_prefix}mins_to_limit"
+      name: "${car_name}Minutes to limit"
+    battery_range:
+      id: "${car_prefix}battery_range"
+      name: "${car_name}Range"
+    charging_state:
+      id: "${car_prefix}charging_state"
+      name: "${car_name}Charging state"
+    charge_port_latch_state:
+      id: "${car_prefix}charge_port_latch_state"
+      name: "${car_name}Charge port latch state"
+      disabled_by_default: true
+    last_update:
+      id: "${car_prefix}last_update"
+      name: "${car_name}Last update"
+    is_climate_on:
+      id: "${car_prefix}is_climate_on"
+      name: "${car_name}Climate"
+    internal_temp:
+      id: "${car_prefix}internal_temp"
+      name: "${car_name}Interior"
+    external_temp:
+      id: "${car_prefix}external_temp"
+      name: "${car_name}Exterior"
+    windows_state:
+      id: "${car_prefix}windows_state"
+      name: "${car_name}Windows"
+    tpms_pressure_fl:
+      id: "${car_prefix}tpms_pressure_fl"
+      name: "${car_name}Tyre pressure front left"
+      disabled_by_default: true
+    tpms_pressure_fr:
+      id: "${car_prefix}tpms_pressure_fr"
+      name: "${car_name}Tyre pressure front right"
+      disabled_by_default: true
+    tpms_pressure_rl:
+      id: "${car_prefix}tpms_pressure_rl"
+      name: "${car_name}Tyre pressure rear left"
+      disabled_by_default: true
+    tpms_pressure_rr:
+      id: "${car_prefix}tpms_pressure_rr"
+      name: "${car_name}Tyre pressure rear right"
+      disabled_by_default: true
+    ble_disconnected_time:
+      id: "${car_prefix}ble_disconnected_time"
+      name: "${car_name}BLE disconnected time"
+      disabled_by_default: true
+      entity_category: diagnostic
+    charger_phases:
+      id: "${car_prefix}charger_phases"
+      name: "${car_name}Charger phases"
+      disabled_by_default: true
+      filters:
+        - lambda: |-
+            if (x == 2)
+              return 3;
+            return x;
+    charge_rate:
+      id: "${car_prefix}charge_rate"
+      name: "${car_name}Charge rate"
+      disabled_by_default: true
+    driver_temp:
+      id: "${car_prefix}driver_temp"
+      name: "${car_name}Climate temperature" # although it's the driver side temperature setting, use it for the overall climate setting
+      disabled_by_default: true
 
 button:
   - platform: template
-    id: ble_pair
-    name: Pair BLE key
+    id: ${car_prefix}ble_pair
+    name: "${car_name}Pair BLE key"
     icon: mdi:key-wireless
     on_press:
-      - lambda: id(tesla_ble_vehicle_id)->startPair();
+      - lambda: id(${car_prefix}tesla_ble_vehicle_id)->startPair();
     entity_category: diagnostic
 
   - platform: template
-    id: btn_wake_up
-    name: Wake up
+    id: ${car_prefix}btn_wake_up
+    name: "${car_name}Wake up"
     icon: mdi:sleep-off
     on_press:
-    - lambda: id(tesla_ble_vehicle_id)->wakeVehicle();
+    - lambda: id(${car_prefix}tesla_ble_vehicle_id)->wakeVehicle();
 
   - platform: template
-    id: btn_flash_light
-    name: Flash light
+    id: ${car_prefix}btn_flash_light
+    name: "${car_name}Flash light"
     icon: mdi:car-light-high
     on_press:
-      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::FLASH_LIGHT, 0);
+      - lambda: id(${car_prefix}tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::FLASH_LIGHT, 0);
 
   - platform: template
-    id: btn_sound_horn
-    name: Sound horn
+    id: ${car_prefix}btn_sound_horn
+    name: "${car_name}Sound horn"
     icon: mdi:bugle
     on_press:
-      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::SOUND_HORN, 0);
+      - lambda: id(${car_prefix}tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::SOUND_HORN, 0);
 
   - platform: template
-    id: btn_unlock_charge_port
-    name: Unlock charge port
+    id: ${car_prefix}btn_unlock_charge_port
+    name: "${car_name}Unlock charge port"
     icon: mdi:ev-plug-ccs2
     on_press:
-      - lambda: id(tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage (VCSEC_ClosureMoveRequest_chargePort_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_OPEN);
+      - lambda: id(${car_prefix}tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage (VCSEC_ClosureMoveRequest_chargePort_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_OPEN);
 
   - platform: template
-    id: btn_unlatch_driver_door
-    name: Unlatch driver door
+    id: ${car_prefix}btn_unlatch_driver_door
+    name: "${car_name}Unlatch driver door"
     icon: mdi:car-door
     on_press:
-      - lambda: id(tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage (VCSEC_ClosureMoveRequest_frontDriverDoor_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_OPEN);
+      - lambda: id(${car_prefix}tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage (VCSEC_ClosureMoveRequest_frontDriverDoor_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_OPEN);
     disabled_by_default: true
 
   - platform: template
-    id: btn_media_play
-    name: Media play⁄pause # Normal / is not allowed here so use alternative fraction symbol
+    id: ${car_prefix}btn_media_play
+    name: "${car_name}Media play⁄pause" # Normal / is not allowed here so use alternative fraction symbol
     icon: mdi:play-pause
     on_press:
-      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::MEDIA_PLAY, 0);
+      - lambda: id(${car_prefix}tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::MEDIA_PLAY, 0);
     disabled_by_default: true
 
   - platform: template
-    id: btn_media_next_track
-    name: Media next track
+    id: ${car_prefix}btn_media_next_track
+    name: "${car_name}Media next track"
     icon: mdi:skip-next
     on_press:
-      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::MEDIA_NEXT_TRACK, 0);
+      - lambda: id(${car_prefix}tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::MEDIA_NEXT_TRACK, 0);
     disabled_by_default: true
 
   - platform: template
-    id: btn_media_previous_track
-    name: Media previous track
+    id: ${car_prefix}btn_media_previous_track
+    name: "${car_name}Media previous track"
     icon: mdi:skip-previous
     on_press:
-      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::MEDIA_PREVIOUS_TRACK, 0);
+      - lambda: id(${car_prefix}tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::MEDIA_PREVIOUS_TRACK, 0);
     disabled_by_default: true
 
   - platform: template
-    id: btn_regenerate_key
-    name: Regenerate key
+    id: ${car_prefix}btn_regenerate_key
+    name: "${car_name}Regenerate key"
     icon: mdi:key-change
     on_press:
-      - lambda: id(tesla_ble_vehicle_id)->regenerateKey();
+      - lambda: id(${car_prefix}tesla_ble_vehicle_id)->regenerateKey();
     entity_category: diagnostic
     disabled_by_default: true
 
   - platform: template
-    id: btn_force_data_update
-    name: Force data update
+    id: ${car_prefix}btn_force_data_update
+    name: "${car_name}Force data update"
     icon: mdi:database-sync
     on_press:
-      - lambda: id(tesla_ble_vehicle_id)->enqueueVCSECInformationRequest(true);
+      - lambda: id(${car_prefix}tesla_ble_vehicle_id)->enqueueVCSECInformationRequest(true);
     entity_category: diagnostic
 
 sensor:
   - platform: ble_client
     type: rssi
-    id: ble_signal
-    ble_client_id: ble_tesla_id
-    name: "BLE Signal"
+    id: ${car_prefix}ble_signal
+    ble_client_id: ${car_prefix}ble_tesla_id
+    name: "${car_name}BLE Signal"
     icon: mdi:bluetooth
     update_interval: 60s
     entity_category: diagnostic
 
 switch:
   - platform: template
-    id: sw_charger
-    name: "Charger"
+    id: ${car_prefix}sw_charger
+    name: "${car_name}Charger"
     optimistic: true
     icon: mdi:lightning-bolt
 #    restore_mode: RESTORE_DEFAULT_OFF
     lambda: |-
-      if ((id(charging_state).state == "Charging") or (id(charging_state).state == "Starting") or (id(charging_state).state == "Calibrating")) {
+      if ((id(${car_prefix}charging_state).state == "Charging") or (id(${car_prefix}charging_state).state == "Starting") or (id(${car_prefix}charging_state).state == "Calibrating")) {
         return true;
       } else {
         return false;
       }
     turn_on_action:
-      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_CHARGING_SWITCH, 1);
+      - lambda: id(${car_prefix}tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_CHARGING_SWITCH, 1);
     turn_off_action:
-      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_CHARGING_SWITCH, 0);
+      - lambda: id(${car_prefix}tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_CHARGING_SWITCH, 0);
 
   - platform: template
-    id: sw_sentry_mode
-    name: "Sentry mode"
+    id: ${car_prefix}sw_sentry_mode
+    name: "${car_name}Sentry mode"
     optimistic: true
     icon: mdi:record-circle-outline
     assumed_state: true # we can't read the state 
     restore_mode: RESTORE_DEFAULT_OFF
     turn_on_action:
-      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_SENTRY_SWITCH, 1);
+      - lambda: id(${car_prefix}tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_SENTRY_SWITCH, 1);
     turn_off_action:
-      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_SENTRY_SWITCH, 0);
+      - lambda: id(${car_prefix}tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_SENTRY_SWITCH, 0);
   
   - platform: template
-    id: sw_climate
-    name: "Climate"
+    id: ${car_prefix}sw_climate
+    name: "${car_name}Climate"
     optimistic: true
     icon: mdi:fan
     lambda: |-
-      if (id(is_climate_on).state) {
+      if (id(${car_prefix}is_climate_on).state) {
         return true;
       } else {
         return false;
       }
     restore_mode: RESTORE_DEFAULT_OFF
     turn_on_action:
-      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_HVAC_SWITCH, 1);
+      - lambda: id(${car_prefix}tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_HVAC_SWITCH, 1);
     turn_off_action:
-      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_HVAC_SWITCH, 0);
+      - lambda: id(${car_prefix}tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_HVAC_SWITCH, 0);
 
   - platform: template
-    id: sw_steering_wheel_heat
-    name: "Steering wheel heat"
+    id: ${car_prefix}sw_steering_wheel_heat
+    name: "${car_name}Steering wheel heat"
     optimistic: true
     icon: mdi:steering
     assumed_state: true # we can't read the state 
     restore_mode: RESTORE_DEFAULT_OFF
     turn_on_action:
-      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_HVAC_STEERING_HEATER_SWITCH, 1);
+      - lambda: id(${car_prefix}tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_HVAC_STEERING_HEATER_SWITCH, 1);
     turn_off_action:
-      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_HVAC_STEERING_HEATER_SWITCH, 0);
+      - lambda: id(${car_prefix}tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_HVAC_STEERING_HEATER_SWITCH, 0);
   
   - platform: template
-    id: sw_defrost_car
-    name: Defrost car
+    id: ${car_prefix}sw_defrost_car
+    name: "${car_name}Defrost car"
     optimistic: true
     icon: mdi:snowflake-melt
     lambda: |-
-      if (id(defrost_state).state != "Off") {
+      if (id(${car_prefix}defrost_state).state != "Off") {
         return true;
       } else {
         return false;
       }
     turn_on_action:
-      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::DEFROST_CAR, 1);
+      - lambda: id(${car_prefix}tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::DEFROST_CAR, 1);
     turn_off_action:
-      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::DEFROST_CAR, 0);
+      - lambda: id(${car_prefix}tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::DEFROST_CAR, 0);
 
   - platform: template
-    id: fast_poll_if_unlocked
-    name: "Fast poll if unlocked"
+    id: ${car_prefix}fast_poll_if_unlocked
+    name: "${car_name}Fast poll if unlocked"
     optimistic: true
     icon: mdi:car-door-lock-open
     entity_category: config
@@ -324,13 +335,13 @@ switch:
           condition:
             lambda: 'return x;'
           then:
-            - lambda: id(tesla_ble_vehicle_id)->fast_poll_if_unlocked_ = 1;
+            - lambda: id(${car_prefix}tesla_ble_vehicle_id)->fast_poll_if_unlocked_ = 1;
           else:
-            - lambda: id(tesla_ble_vehicle_id)->fast_poll_if_unlocked_ = 0;
+            - lambda: id(${car_prefix}tesla_ble_vehicle_id)->fast_poll_if_unlocked_ = 0;
 
   - platform: template
-    id: wake_on_boot
-    name: "Wake on boot"
+    id: ${car_prefix}wake_on_boot
+    name: "${car_name}Wake on boot"
     optimistic: true
     icon: mdi:sleep-off
     entity_category: config
@@ -341,111 +352,111 @@ switch:
           condition:
             lambda: 'return x;'
           then:
-            - lambda: id(tesla_ble_vehicle_id)->wake_on_boot_ = 1;
+            - lambda: id(${car_prefix}tesla_ble_vehicle_id)->wake_on_boot_ = 1;
           else:
-            - lambda: id(tesla_ble_vehicle_id)->wake_on_boot_ = 0;
+            - lambda: id(${car_prefix}tesla_ble_vehicle_id)->wake_on_boot_ = 0;
 
   - platform: ble_client
-    id: sw_ble_connection
-    ble_client_id: ble_tesla_id
-    name: "BLE Connection"
+    id: ${car_prefix}sw_ble_connection
+    ble_client_id: ${car_prefix}ble_tesla_id
+    name: "${car_name}BLE Connection"
     entity_category: diagnostic
 
 lock:
   - platform: template
-    id: lock_car
-    name: "Lock car"
+    id: ${car_prefix}lock_car
+    name: "${car_name}Lock car"
     optimistic: true
     icon: mdi:lock
     lambda: |-
-      if (id(is_unlocked).state) {
+      if (id(${car_prefix}is_unlocked).state) {
           return LOCK_STATE_UNLOCKED;
         } else {
           return LOCK_STATE_LOCKED;
         }
     unlock_action:
       - lambda: |-
-          id(tesla_ble_vehicle_id)->lockVehicle(VCSEC_RKEAction_E_RKE_ACTION_UNLOCK);
+          id(${car_prefix}tesla_ble_vehicle_id)->lockVehicle(VCSEC_RKEAction_E_RKE_ACTION_UNLOCK);
     lock_action:
       - lambda: |-
-          id(tesla_ble_vehicle_id)->lockVehicle(VCSEC_RKEAction_E_RKE_ACTION_LOCK);
+          id(${car_prefix}tesla_ble_vehicle_id)->lockVehicle(VCSEC_RKEAction_E_RKE_ACTION_LOCK);
 
 cover:
   - platform: template
-    id: cov_vent
-    name: "Vent"
+    id: ${car_prefix}cov_vent
+    name: "${car_name}Vent"
     optimistic: false #### true
     icon: mdi:car-door
     device_class: door
     lambda: |-
-      if (id(windows_state).state) {
+      if (id(${car_prefix}windows_state).state) {
         return COVER_OPEN;
       } else {
         return COVER_CLOSED;
       }
     close_action: #### This way round to make the arrows follow the desired window motion
       - lambda: |-
-          id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_WINDOWS_SWITCH, 0);
+          id(${car_prefix}tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_WINDOWS_SWITCH, 0);
     open_action:
       - lambda: |-
-          id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_WINDOWS_SWITCH, 1);
+          id(${car_prefix}tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_WINDOWS_SWITCH, 1);
 
   - platform: template
-    id: cov_charge_port
-    name: "Charge port"
+    id: ${car_prefix}cov_charge_port
+    name: "${car_name}Charge port"
     optimistic: true
     device_class: door
     icon: mdi:ev-plug-ccs2
     lambda: |-
-      if (id(is_charge_flap_open).state) {
+      if (id(${car_prefix}is_charge_flap_open).state) {
         return COVER_OPEN;
       } else {
         return COVER_CLOSED;
       }
 #    restore_mode: RESTORE_DEFAULT_OFF
     open_action:
-      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_OPEN_CHARGE_PORT_DOOR,1);
+      - lambda: id(${car_prefix}tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_OPEN_CHARGE_PORT_DOOR,1);
     close_action:
-      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_CLOSE_CHARGE_PORT_DOOR,1);
+      - lambda: id(${car_prefix}tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_CLOSE_CHARGE_PORT_DOOR,1);
   
   - platform: template
-    id: cov_boot
-    name: "Boot"
+    id: ${car_prefix}cov_boot
+    name: "${car_name}Boot"
     optimistic: true
     device_class: door
     icon: mdi:car-back
     lambda: |-
-      if (id(is_boot_open).state) {
+      if (id(${car_prefix}is_boot_open).state) {
         return COVER_OPEN;
       } else {
         return COVER_CLOSED;
       }
 #    restore_mode: RESTORE_DEFAULT_OFF
     open_action:
-      - lambda: id(tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage (VCSEC_ClosureMoveRequest_rearTrunk_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_OPEN);
+      - lambda: id(${car_prefix}tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage (VCSEC_ClosureMoveRequest_rearTrunk_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_OPEN);
     close_action:
-      - lambda: id(tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage (VCSEC_ClosureMoveRequest_rearTrunk_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_CLOSE);
+      - lambda: id(${car_prefix}tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage (VCSEC_ClosureMoveRequest_rearTrunk_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_CLOSE);
 
   - platform: template
-    id: cov_frunk
-    name: "Frunk"
+    id: ${car_prefix}cov_frunk
+    name: "${car_name}Frunk"
     optimistic: true
     device_class: door
     icon: mdi:car
 #    assumed_state: true # we can't read the state 
     lambda: |-
-      if (id(is_frunk_open).state) {
+      if (id(${car_prefix}is_frunk_open).state) {
         return COVER_OPEN;
       } else {
         return COVER_CLOSED;
       }
     open_action:
-      - lambda: id(tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage (VCSEC_ClosureMoveRequest_frontTrunk_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_OPEN);
+      - lambda: id(${car_prefix}tesla_ble_vehicle_id)->sendVCSECClosureMoveRequestMessage (VCSEC_ClosureMoveRequest_frontTrunk_tag, VCSEC_ClosureMoveType_E_CLOSURE_MOVE_TYPE_OPEN);
     
 number:
   - platform: template
-    name: "Charging amps"
-    id: charging_amps
+    name: "${car_name}Charging amps"
+    id: ${car_prefix}charging_amps
     icon: mdi:ev-station
     unit_of_measurement: "A"
     mode: slider
@@ -456,16 +467,16 @@ number:
     set_action:
       - lambda: |-
           int var_x = static_cast<int>(x);
-          id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_CHARGING_AMPS, var_x);
+          id(${car_prefix}tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_CHARGING_AMPS, var_x);
     lambda: |-
-      if (id(max_amps).has_state())
+      if (id(${car_prefix}max_amps).has_state())
       {
-        return id(max_amps).state;
+        return id(${car_prefix}max_amps).state;
       }
       else return (0);
   - platform: template
-    name: "Charging limit"
-    id: charging_limit
+    name: "${car_name}Charging limit"
+    id: ${car_prefix}charging_limit
     icon: mdi:ev-station
     unit_of_measurement: "%"
     mode: slider
@@ -476,16 +487,16 @@ number:
     set_action:
       - lambda: |-
           int var_x = static_cast<int>(x);
-          id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_CHARGING_LIMIT, var_x);
+          id(${car_prefix}tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_CHARGING_LIMIT, var_x);
     lambda: |-
-      if (id(max_soc).has_state())
+      if (id(${car_prefix}max_soc).has_state())
       {
-        return id(max_soc).state;
+        return id(${car_prefix}max_soc).state;
       }
       else return (0);
   - platform: template
-    name: "Climate temperature"
-    id: set_climate_temp
+    name: "${car_name}Climate temperature"
+    id: ${car_prefix}set_climate_temp
     icon: mdi:thermometer-lines
     unit_of_measurement: "°C"
     mode: slider
@@ -496,18 +507,18 @@ number:
     set_action:
       - lambda: |-
           int var_x = static_cast<int>(x);
-          id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_CLIMATE_TEMP, var_x);
+          id(${car_prefix}tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_CLIMATE_TEMP, var_x);
     lambda: |-
-      if (id(driver_temp).has_state())
+      if (id(${car_prefix}driver_temp).has_state())
       {
-        return id(driver_temp).state;
+        return id(${car_prefix}driver_temp).state;
       }
       else return (0);
     disabled_by_default: true
 
   - platform: template
-    id: post_wake_poll_time
-    name: "Post wake poll time"
+    id: ${car_prefix}post_wake_poll_time
+    name: "${car_name}Post wake poll time"
     icon: mdi:timelapse
     min_value: 0
     max_value: 1000
@@ -520,10 +531,10 @@ number:
     entity_category: config
     on_value:
       - lambda: |-
-          id(tesla_ble_vehicle_id)->post_wake_poll_time_ = x * 1000;
+          id(${car_prefix}tesla_ble_vehicle_id)->post_wake_poll_time_ = x * 1000;
   - platform: template
-    id: poll_data_period
-    name: "Poll data period"
+    id: ${car_prefix}poll_data_period
+    name: "${car_name}Poll data period"
     icon: mdi:timer-outline
     min_value: 0
     max_value: 1000
@@ -536,10 +547,10 @@ number:
     entity_category: config
     on_value:
       - lambda: |-
-          id(tesla_ble_vehicle_id)->poll_data_period_ = x * 1000;
+          id(${car_prefix}tesla_ble_vehicle_id)->poll_data_period_ = x * 1000;
   - platform: template
-    id: poll_asleep_period
-    name: "Poll asleep period"
+    id: ${car_prefix}poll_asleep_period
+    name: "${car_name}Poll asleep period"
     icon: mdi:bed-clock
     min_value: 0
     max_value: 1000
@@ -552,10 +563,10 @@ number:
     entity_category: config
     on_value:
       - lambda: |-
-          id(tesla_ble_vehicle_id)->poll_asleep_period_ = x * 1000;
+          id(${car_prefix}tesla_ble_vehicle_id)->poll_asleep_period_ = x * 1000;
   - platform: template
-    id: poll_charging_period
-    name: "Poll charging period"
+    id: ${car_prefix}poll_charging_period
+    name: "${car_name}Poll charging period"
     icon: mdi:timer-sync-outline
     min_value: 0
     max_value: 1000
@@ -568,10 +579,10 @@ number:
     entity_category: config
     on_value:
       - lambda: |-
-          id(tesla_ble_vehicle_id)->poll_charging_period_ = x * 1000;
+          id(${car_prefix}tesla_ble_vehicle_id)->poll_charging_period_ = x * 1000;
   - platform: template
-    id: ble_disconnected_min_time
-    name: "BLE disconnected min time"
+    id: ${car_prefix}ble_disconnected_min_time
+    name: "${car_name}BLE disconnected min time"
     icon: mdi:bluetooth-connect
     min_value: 0
     max_value: 1000
@@ -584,4 +595,4 @@ number:
     entity_category: config
     on_value:
       - lambda: |-
-          id(tesla_ble_vehicle_id)->ble_disconnected_min_time_ = x * 1000;
+          id(${car_prefix}tesla_ble_vehicle_id)->ble_disconnected_min_time_ = x * 1000;
