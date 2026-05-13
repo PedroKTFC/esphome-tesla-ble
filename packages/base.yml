@@ -34,7 +34,7 @@ logger:
 
 ota:
   platform: esphome
-#  password: !secret ota_password
+  password: !secret ota_password
 
 wifi:
   networks:
