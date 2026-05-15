@@ -12,7 +12,7 @@ esphome:
   project:
     name: PedroKTFC.esphome-tesla-ble
     version: "2026.5.0-dev-2"
-    name: ${device_name}
+  name: ${device_name}
   name_add_mac_suffix: false
   friendly_name: ${friendly_name}
   libraries:
