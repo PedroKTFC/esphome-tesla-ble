@@ -4,6 +4,7 @@
 
 tesla_ble_vehicle:
   is_asleep:
+    id: is_asleep
     name: "Alvó állapotban"
   is_user_present:
     name: "Személy észlelve"
@@ -23,6 +24,7 @@ tesla_ble_vehicle:
   charge_state:
     name: "Töltöttségi szint"
   odometer:
+    id: odometer
     name: "Km. óra állás"
     filters:
       - multiply: 1.609344 # in hundredths of a mile but, multiply by 0.01 alredy in package file
@@ -47,6 +49,7 @@ tesla_ble_vehicle:
   mins_to_limit:
     name: "Idő a töltés befejezéséig"
   battery_range:
+    id: battery_range
     name: "Hatótáv"
     filters:
       - multiply: 1.609344 # miles
@@ -65,6 +68,22 @@ tesla_ble_vehicle:
     name: "Hőmérséklet kint"
   windows_state:
     name: "Ablakok"
+  tpms_pressure_fl:
+    name: "Guminyomás bal első"
+  tpms_pressure_fr:
+    name: "Guminyomás jobb első"
+  tpms_pressure_rl:
+    name: "Guminyomás bal hátsó"
+  tpms_pressure_rr:
+    name: "Guminyomás jobb hátsó"
+  ble_disconnected_time:
+    name: "BLE lecsatlakozva"
+  charger_phases:
+    name: "Töltő fázisok"
+  charge_rate:
+    name: "Töltési sebesség"
+  driver_temp:
+    name: "Klíma hőmérséklet"
 
 button:
   - id: !extend ble_pair
@@ -83,6 +102,12 @@ button:
     name: "Kulcs újragenerálása"
   - id: !extend btn_force_data_update
     name: "Kézi adatfrissítés"
+  - id: !extend btn_media_play
+    name: "Média lejátszás⁄folytatás"
+  - id: !extend btn_media_next_track
+    name: "Média következő"
+  - id: !extend btn_media_previous_track
+    name: "Média előző"
 
 sensor:
   - id: !extend ble_signal
@@ -103,6 +128,8 @@ switch:
     name: "BLE kapcsolat"
   - id: !extend fast_poll_if_unlocked
     name: "Lekérdezés gyors nyitott zárnál"
+  - id: !extend wake_on_boot
+    name: "Felébresztés ESPHome bootoláskor"
 
 lock:
   - id: !extend lock_car
@@ -123,6 +150,8 @@ number:
     name: "Töltési áram"
   - id: !extend charging_limit
     name: "Töltési limit"
+  - id: !extend set_climate_temp
+    name: "Klíma hőmérséklet"
   - id: !extend post_wake_poll_time
     name: "Lekérdezés gyak. felébresztés után"
   - id: !extend poll_data_period

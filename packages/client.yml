@@ -1,6 +1,7 @@
 substitutions:
   tesla_vin: ""
   ble_mac_address: "00:00:00:00:00:00"
+  charging_amps_max: "32"
 
 esphome:
   on_boot:

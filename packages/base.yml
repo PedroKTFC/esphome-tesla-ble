@@ -11,7 +11,7 @@ substitutions:
 esphome:
   project:
     name: PedroKTFC.esphome-tesla-ble
-    version: "2026.5.0-dev-2"
+    version: "2026.5.1"
   name: ${device_name}
   name_add_mac_suffix: false
   friendly_name: ${friendly_name}
@@ -34,7 +34,7 @@ logger:
 
 ota:
   platform: esphome
-#  password: !secret ota_password
+  password: !secret ota_password
 
 wifi:
   networks:
