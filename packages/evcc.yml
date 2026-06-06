@@ -6,7 +6,7 @@ switch:
     id: charger_evcc
     optimistic: True                    # remember the switches state
 
-    # Beim Einschalten nur weiterleiten, wenn Ladevorgang nicht abgeschlossen ist
+    # At activation only forward if the state is not Complete
     turn_on_action:
       - if:
           condition:
@@ -14,11 +14,11 @@ switch:
                 return id(charging_state).state != "Complete";
           then:
             - switch.turn_on: sw_charger
-            - logger.log: "charger_evcc → charger eingeschaltet"
+            - logger.log: "charger_evcc → charger activated"
           else:
-            - logger.log: "charger_evcc: Einschalten verweigert (charge_state = complete)"
+            - logger.log: "charger_evcc: Activatin rejected (charge_state = complete)"
 
-    # Beim Ausschalten immer weiterleiten
+    # Turning off will only be forwarded if not completed
     turn_off_action:
       - if:
           condition:
@@ -26,9 +26,9 @@ switch:
                 return id(charging_state).state != "Complete";
           then:
             - switch.turn_off: sw_charger
-            - logger.log: "charger_evcc → charger ausgeschaltet"
+            - logger.log: "charger_evcc → charger turned off"
           else:
-            - logger.log: "charger_evcc: Ausschalten verweigert (charge_state = complete)"
+            - logger.log: "charger_evcc: turn off rejected (charge_state = complete)"
 
 
 # The number will not send commands to the car if the charing state is "complete", this way we make sure the Tesla will not wake up for chatty OBC commands.
@@ -52,20 +52,20 @@ number:
             - lambda: |-
                 float value = x;
 
-                // Wert einmal setzen
+                // send value once
                 id(charging_amps).make_call().set_value(value).perform();
 
-                // Bei Werten < 5 zusätzlich ein zweites Mal setzen
+                // For values below 5 send twice
                 if (value < 5.0) {
                   delay(300);  // kurze Pause, damit der erste Befehl verarbeitet wird
                   id(charging_amps).make_call().set_value(value).perform();
-                  ESP_LOGI("charging_amps", "Wert %.1f A (kleiner 5) zweimal gesendet", value);
+                  ESP_LOGI("charging_amps", "Wert %.1f A (under 5) sent twice", value);
                 } else {
-                  ESP_LOGI("charging_amps", "charging_amps_evcc → %.1f A weitergeleitet", value);
+                  ESP_LOGI("charging_amps", "charging_amps_evcc → %.1f A sent", value);
                 }
           else:
             - logger.log:
-                format: "charging_amps_evcc: %.1f A blockiert (charging_state = %s)"
+                format: "charging_amps_evcc: %.1f A rejected (charging_state = %s)"
                 args: ['x', id(charging_state).state.c_str()]
                 level: WARN
 
@@ -99,16 +99,16 @@ text_sensor:
         current = "A";                    // Fail-Safe
       }
 
-      // === Zustandswechsel-Erkennung ===
+      // === detect change of state ===
       static std::string previous = "";   // Merkt sich den letzten Zustand
 
       if (current == "A" && previous != "A" && previous != "") {
-        // Wechsel zu A erfolgt → Switch ausschalten
+        // Change to A detected → Switch off
         id(charger_evcc).turn_off();
-        ESP_LOGI("charging_iso", "Zustandswechsel zu A erkannt → charger_evcc ausgeschaltet");
+        ESP_LOGI("charging_iso", "Change to A detected → charger_evcc off");
       }
 
-      previous = current;   // Aktuellen Zustand für nächsten Durchlauf speichern
+      previous = current;   // Save current state for next iteration
 
       return {current};
     update_interval: 5s
