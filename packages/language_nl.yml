@@ -1,0 +1,136 @@
+# including this file will regionalize the entities to German:
+# - localize all names to German terminology
+# - use km. instead of mi for distance units by default
+
+
+tesla_ble_vehicle:
+  is_asleep:
+    name: "In slaapstand"
+  is_user_present:
+    name: "Persoon aanwezig"
+  is_unlocked:
+    name: "Ontgrendeld"
+  is_charge_flap_open:
+    icon: mdi:ev-plug-ccs2
+    name: "Laadpoort geopend"
+  is_boot_open:
+    name: "Bagageruimte achter"
+  is_frunk_open:
+    name: "Bagageruimte voor"
+  shift_state:
+    name: "Rijmodus"
+  defrost_state:
+    name: "Ontdooien"
+  charge_state:
+    name: "Laadstatus"
+  odometer:
+    name: "Kilometerstand"
+    filters:
+      - multiply: 1.609344
+    unit_of_measurement: km
+  charge_current:
+    name: "Laadstroom"
+  charge_voltage:
+    name: "Laadspanning"
+  charge_power:
+    name: "Laadvermogen"
+  charge_energy_added:
+    name: "Toegevoegde energie"
+  charge_distance_added:
+    name: "Toegevoegde rijafstand"
+    filters:
+      - multiply: 1.609344
+    unit_of_measurement: km
+  max_soc:
+    name: "Oplaadlimiet"
+  max_amps:
+    name: "Maximale laadstroom"
+  mins_to_limit:
+    name: "Sessieduur"
+  battery_range:
+    name: "Reikwijdte"
+    filters:
+      - multiply: 1.609344
+    unit_of_measurement: km
+  charging_state:
+    name: "Laadstatus"
+  last_update:
+    name: "Laatste update"
+  is_climate_on:
+    name: "Climate control"
+  internal_temp:
+    name: "Temperatuur interieur"
+  external_temp:
+    name: "Buitentemperatuur"
+  windows_state:
+    name: "Ramen"
+  tpms_pressure_fl:
+    name: "Bandendruk linksvoor"
+  tpms_pressure_fr:
+    name: "Bandendruk rechtsvoor"
+  tpms_pressure_rl:
+    name: "Bandendruk linksachter"
+  tpms_pressure_rr:
+    name: "Bandendruk rechtsachter"
+button:
+  - id: !extend ble_pair
+    name: "BLE koppelen"
+  - id: !extend btn_wake_up
+    name: "Wekken"
+  - id: !extend btn_flash_light
+    name: "Lichten knipperen"
+  - id: !extend btn_sound_horn
+    name: "Claxon"
+  - id: !extend btn_unlock_charge_port
+    name: "Laadpoort ontgrendelen"
+  - id: !extend btn_unlatch_driver_door
+    name: "Portier chauffeur openen"
+  - id: !extend btn_regenerate_key
+    name: "Sleutel (re)genereren"
+  - id: !extend btn_force_data_update
+    name: "Update gegevens"
+sensor:
+  - id: !extend ble_signal
+    name: "BLE-Signaalsterkte"
+switch:
+  - id: !extend sw_charger
+    name: "Laden"
+  - id: !extend sw_sentry_mode
+    name: "Sentry modus"
+  - id: !extend sw_climate
+    name: "Climate control"
+  - id: !extend sw_steering_wheel_heat
+    name: "Stuurwielverwarming"
+  - id: !extend sw_defrost_car
+    name: "Ontdooiing"
+  - id: !extend sw_ble_connection
+    name: "BLE verbinding"
+  - id: !extend fast_poll_if_unlocked
+    name: "Snel pollen bij ontgrendeling"
+lock:
+  - id: !extend lock_car
+    name: "Auto afgesloten"
+cover:
+  - id: !extend cov_vent
+    name: "Ventilatie"
+  - id: !extend cov_charge_port
+    name: "Laadpoort"
+  - id: !extend cov_boot
+    name: "Bagageruimte achter"
+  - id: !extend cov_frunk
+    name: "Bagageruimte voor"
+number:
+  - id: !extend charging_amps
+    name: "Laadstroom"
+  - id: !extend charging_limit
+    name: "Oplaadlimiet"
+  - id: !extend post_wake_poll_time
+    name: "Poll interval na wekken"
+  - id: !extend poll_data_period
+    name: "Standaard poll interval"
+  - id: !extend poll_asleep_period
+    name: "Poll interval in slaapstand"
+  - id: !extend poll_charging_period
+    name: "Poll interval tijdens laden"
+  - id: !extend ble_disconnected_min_time
+    name: "Min. tijd tot BLE disconnectie"
