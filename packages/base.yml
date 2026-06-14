@@ -6,7 +6,7 @@ substitutions:
   BLE_library: "https://github.com/PedroKTFC/tesla-ble.git"
   tesla_ble_component: "github://PedroKTFC/esphome-tesla-ble"
   ble_presence_timeout: 30s
-  ble_components: [tesla_ble_vehicle]
+  ble_components: [tesla_ble_vehicle, tesla_ble_listener]
 
 esphome:
   project:
