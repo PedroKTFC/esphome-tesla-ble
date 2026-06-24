@@ -13,6 +13,7 @@
 #include <esphome/components/binary_sensor/binary_sensor.h>
 #include <esphome/components/text_sensor/text_sensor.h>
 #include <esphome/components/sensor/sensor.h>
+#include <esphome/components/switch/switch.h>
 #include <esphome/components/ble_client/ble_client.h>
 #include <esphome/components/esp32_ble_tracker/esp32_ble_tracker.h>
 #include <esphome/core/component.h>
@@ -106,9 +107,9 @@ namespace esphome
             {BLE_CarServer_VehicleAction::GET_CHARGE_STATE,                 "getChargeState",            AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getChargeState_tag,                    GetOnSet::Invalid,         1},
             {BLE_CarServer_VehicleAction::GET_CLIMATE_STATE,                "getClimateState",           AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getClimateState_tag,                   GetOnSet::Invalid,         5},
             {BLE_CarServer_VehicleAction::GET_DRIVE_STATE,                  "getDriveState",             AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getDriveState_tag,                     GetOnSet::Invalid,         1},
-            {BLE_CarServer_VehicleAction::GET_LOCATION_STATE,               "getLocationState",          AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getLocationState_tag,                  GetOnSet::Invalid,         10},
+            {BLE_CarServer_VehicleAction::GET_LOCATION_STATE,               "getLocationState",          AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getLocationState_tag,                  GetOnSet::Invalid,        10},
             {BLE_CarServer_VehicleAction::GET_CLOSURES_STATE,               "getClosuresState",          AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getClosuresState_tag,                  GetOnSet::Invalid,         6},
-            {BLE_CarServer_VehicleAction::GET_TYRES_STATE,                  "getTyresState",             AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getTirePressureState_tag,              GetOnSet::Invalid,         17},
+            {BLE_CarServer_VehicleAction::GET_TYRES_STATE,                  "getTyresState",             AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getTirePressureState_tag,              GetOnSet::Invalid,        17},
             {BLE_CarServer_VehicleAction::SET_CHARGING_SWITCH,              "setChargingSwitch",         AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_chargingStartStopAction_tag,            GetOnSet::GetChargeState,  0},
             {BLE_CarServer_VehicleAction::SET_CHARGING_AMPS,                "setChargingAmps",           AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_setChargingAmpsAction_tag,              GetOnSet::GetChargeState,  0},
             {BLE_CarServer_VehicleAction::SET_CHARGING_LIMIT,               "setChargingLimit",          AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_chargingSetLimitAction_tag,             GetOnSet::GetChargeState,  0},
@@ -329,21 +330,20 @@ namespace esphome
             void enqueueVCSECInformationRequest(bool force = false);
             int wake_on_boot_ = 0; // != 0 wakes car on device boot
 
-            int writeBLE(const unsigned char *message_buffer, size_t message_length,
-                         esp_gatt_write_type_t write_type, esp_gatt_auth_req_t auth_req);
-    inline void pop_command_and_tidy_up ()
-    /*
-    *   Processing of the current command has completed (including it failing). It needs to be popped off the queue
-    *   and any other tidying up carried out (eg emptying the read and response queues).
-    */
-    {
-      command_queue_.pop();
-      ble_read_buffer_.clear();         // Clear anything that's been received and not processed
-      if (!response_queue_.empty())           // Empty the response queue if there's anything in it
-      {
-        response_queue_.pop();
-      }
-    }
+            int writeBLE(const unsigned char *message_buffer, size_t message_length, esp_gatt_write_type_t write_type, esp_gatt_auth_req_t auth_req);
+            inline void pop_command_and_tidy_up ()
+            /*
+            *   Processing of the current command has completed (including it failing). It needs to be popped off the queue
+            *   and any other tidying up carried out (eg emptying the read and response queues).
+            */
+            {
+            command_queue_.pop();
+            ble_read_buffer_.clear();               // Clear anything that's been received and not processed
+            if (!response_queue_.empty())           // Empty the response queue if there's anything in it
+            {
+                response_queue_.pop();
+            }
+            }
             inline const ActionMessageDetail& get_action_detail (BLE_CarServer_VehicleAction action)
             { // Get the entry in the ACTION_SPECIFICS table corresponding to the action (we can't be sure of the order)
                 return ACTION_SPECIFICS[static_cast<size_t>(action)];
@@ -382,6 +382,12 @@ namespace esphome
             }
             void set_numeric_sensor (NumericSensorId id, sensor::Sensor* s) {
                 numeric_sensors_[static_cast<size_t>(id)] = s;
+            }
+            void set_charger_switch(switch_::Switch *sw) {
+                charger_switch_ = sw;
+            }
+            void set_defrost_switch(switch_::Switch *sw) {
+                defrost_switch_ = sw;
             }
             inline static constexpr std::pair<int, const char*> SHIFT_MAP[] = {
                 {CarServer_ShiftState_Invalid_tag,  "Invalid"},
@@ -472,6 +478,8 @@ namespace esphome
 
             std::array<sensor::Sensor*, static_cast<size_t>(NumericSensorId::Count)> numeric_sensors_{};
 
+            switch_::Switch *charger_switch_{nullptr};
+            switch_::Switch *defrost_switch_{nullptr};
             std::vector<unsigned char> ble_read_buffer_;
 
             void initializeFlash();
