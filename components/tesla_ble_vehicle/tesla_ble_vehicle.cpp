@@ -1931,11 +1931,9 @@ namespace esphome
             {
               std::string defrost_state_text = lookup_defrost_state (carserver_response.response_msg.vehicleData.climate_state.defrost_mode.which_type);
               publishSensor (TextSensorId::DefrostState, defrost_state_text.c_str());
-              if (defrost_state_text != "Off")
+              if (defrost_switch_ != nullptr)
               {
-                defrost_switch_->publish_state(true);
-              } else {
-                defrost_switch_->publish_state(false);
+                defrost_switch_->publish_state(defrost_state_text != "Off");
               }
             }
             else
