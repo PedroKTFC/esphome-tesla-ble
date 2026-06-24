@@ -106,7 +106,6 @@ namespace esphome
       if ((now - current_command.started_at) > COMMAND_TIMEOUT)
       {
         ESP_LOGW(TAG, "[%s] Command timed out after %d ms with %d commands in the queue", current_command.execute_name.c_str(), COMMAND_TIMEOUT, command_queue_.size());
-//        command_queue_.pop();
         pop_command_and_tidy_up ();
         return;
       }
@@ -121,7 +120,6 @@ namespace esphome
         if (binary_sensors_[static_cast<size_t>(BinarySensorId::IsAsleep)]->state && (current_command.execute_name.find("get") == 0))
         {
           ESP_LOGI(TAG, "[%s] Car is asleep, don't wake for a 'get' command", current_command.execute_name.c_str());
-//          command_queue_.pop();
           pop_command_and_tidy_up ();
           return;
         }
@@ -160,7 +158,6 @@ namespace esphome
               break;
             case UniversalMessage_Domain_DOMAIN_BROADCAST:
               ESP_LOGE(TAG, "[%s] Invalid state: VCSEC authenticated but no auth required", current_command.execute_name.c_str());
-//              command_queue_.pop();
               pop_command_and_tidy_up ();
               return;
             }
@@ -182,7 +179,6 @@ namespace esphome
             {
               ESP_LOGE(TAG, "[%s] Failed to authenticate VCSEC after %d retries, giving up", current_command.execute_name.c_str(), MAX_RETRIES);
               pop_command_and_tidy_up ();
-//              command_queue_.pop();
               return;
             }
           }
@@ -226,7 +222,6 @@ namespace esphome
               else
               {
                 ESP_LOGE(TAG, "[%s] Failed INFOTAINMENT auth after %d retries, giving up", current_command.execute_name.c_str(), MAX_RETRIES);
-//                command_queue_.pop();
                 pop_command_and_tidy_up ();
                 return;
               }
@@ -240,7 +235,6 @@ namespace esphome
           if (current_command.retry_count > MAX_RETRIES)
           {
             ESP_LOGE(TAG, "[%s] Failed to wake vehicle after %d retries", current_command.execute_name.c_str(), MAX_RETRIES);
-//            command_queue_.pop();
             pop_command_and_tidy_up ();
             return;
           }
@@ -265,7 +259,6 @@ namespace esphome
           {
             if (strcmp(current_command.execute_name.c_str(), "wake vehicle") == 0) {
               ESP_LOGD(TAG, "[%s] Vehicle is awake, command completed", current_command.execute_name.c_str());
-//              command_queue_.pop();
             pop_command_and_tidy_up ();
             return;
             }
@@ -303,7 +296,6 @@ namespace esphome
             if (current_command.retry_count > MAX_RETRIES)
             {
               ESP_LOGE(TAG, "[%s] Failed to wake up vehicle after %d retries", current_command.execute_name.c_str(), MAX_RETRIES);
-//              command_queue_.pop();
               pop_command_and_tidy_up ();
               return;
             }
@@ -320,7 +312,6 @@ namespace esphome
             ((binary_sensors_[static_cast<size_t>(BinarySensorId::IsUnlocked)]->state == false) and (strcmp(current_command.execute_name.c_str(), "lock vehicle") == 0)))
         {
           ESP_LOGI (TAG, "[%s] Vehicle is (un)locked as required so command completed", current_command.execute_name.c_str());
-//          command_queue_.pop();
           pop_command_and_tidy_up ();
           return;
         }
@@ -355,7 +346,6 @@ namespace esphome
           if (current_command.retry_count > MAX_RETRIES)
           {
             ESP_LOGE(TAG, "[%s] Failed to execute command after %d retries, giving up", current_command.execute_name.c_str(), MAX_RETRIES);
-//            command_queue_.pop();
             pop_command_and_tidy_up ();
             return;
           }
@@ -427,7 +417,6 @@ namespace esphome
             default:
               break; // do nothing
           }
-//          command_queue_.pop(); // The command is complete
           pop_command_and_tidy_up ();
           return;
         }
@@ -553,22 +542,22 @@ namespace esphome
 
       switch (read_queue_message_.to_destination.which_sub_destination)
       {
-      case UniversalMessage_Destination_domain_tag:
-      {
-        ESP_LOGD(TAG, "[%s] Dropping message to %s", request_uuid_hex, domain_to_string(read_queue_message_.from_destination.sub_destination.domain));
-        return;
-      }
-      case UniversalMessage_Destination_routing_address_tag:
-      {
-        // Continue
-        ESP_LOGD(TAG, "Continuing message with routing address");
-        break;
-      }
-      default:
-      {
-        ESP_LOGW(TAG, "[%s] Dropping message with unrecognized destination type, %d", request_uuid_hex, read_queue_message_.to_destination.which_sub_destination);
-        return;
-      }
+        case UniversalMessage_Destination_domain_tag:
+        {
+          ESP_LOGD(TAG, "[%s] Dropping message to %s", request_uuid_hex, domain_to_string(read_queue_message_.from_destination.sub_destination.domain));
+          return;
+        }
+        case UniversalMessage_Destination_routing_address_tag:
+        {
+          // Continue
+          ESP_LOGD(TAG, "Continuing message with routing address");
+          break;
+        }
+        default:
+        {
+          ESP_LOGW(TAG, "[%s] Dropping message with unrecognized destination type, %d", request_uuid_hex, read_queue_message_.to_destination.which_sub_destination);
+          return;
+        }
       }
 
       if (read_queue_message_.to_destination.sub_destination.routing_address.size != 16)
@@ -1039,7 +1028,7 @@ namespace esphome
           // Start retrieval of data from car. Each data type has its own frequency.
           last_infotainment_poll_time_ = millis();
           if ((number_updates_since_connection_ % get_action_detail(BLE_CarServer_VehicleAction::GET_CHARGE_STATE).numberUpdatesBetweenGets) == 0)
-              sendCarServerVehicleActionMessage (BLE_CarServer_VehicleAction::GET_CHARGE_STATE, 0);
+            sendCarServerVehicleActionMessage (BLE_CarServer_VehicleAction::GET_CHARGE_STATE, 0);
           if ((number_updates_since_connection_ % get_action_detail(BLE_CarServer_VehicleAction::GET_DRIVE_STATE).numberUpdatesBetweenGets) == 0)
             sendCarServerVehicleActionMessage (BLE_CarServer_VehicleAction::GET_DRIVE_STATE, 0);
           if ((number_updates_since_connection_ % get_action_detail(BLE_CarServer_VehicleAction::GET_CLIMATE_STATE).numberUpdatesBetweenGets) == 0)
@@ -1844,7 +1833,7 @@ namespace esphome
               ESP_LOGI (TAG, "No data to set charge rate");
             }
             if (carserver_response.response_msg.vehicleData.charge_state.has_charging_state)
-            {            
+            {
               switch (carserver_response.response_msg.vehicleData.charge_state.charging_state.which_type)
               {
                 case CarServer_ChargeState_ChargingState_Starting_tag:
@@ -1861,6 +1850,12 @@ namespace esphome
               }
               std::string charging_state_text = lookup_charging_state (carserver_response.response_msg.vehicleData.charge_state.charging_state.which_type);
               publishSensor (TextSensorId::ChargingState, charging_state_text.c_str());
+              if ((charging_state_text == "Charging") or (charging_state_text == "Starting") or (charging_state_text == "Calibrating"))
+              {
+                charger_switch_->publish_state(true);
+              } else {
+                charger_switch_->publish_state(false);
+              }
             }
             else
             {
@@ -1936,6 +1931,12 @@ namespace esphome
             {
               std::string defrost_state_text = lookup_defrost_state (carserver_response.response_msg.vehicleData.climate_state.defrost_mode.which_type);
               publishSensor (TextSensorId::DefrostState, defrost_state_text.c_str());
+              if (defrost_state_text != "Off")
+              {
+                defrost_switch_->publish_state(true);
+              } else {
+                defrost_switch_->publish_state(false);
+              }
             }
             else
             {
@@ -1998,7 +1999,7 @@ namespace esphome
             publishSensor (TextSensorId::LastUpdate, ctime(&timestamp));
           }
           break;
-        case 0: // No data in the response but presumably otherwise ok (controls)
+        case 0: // No data in the response but presumably otherwise ok (controls) 
           break;
         default:
           ESP_LOGW (TAG, "[handleInfoCarServerResponse] Non vehicle data response %d", carserver_response.which_response_msg);
