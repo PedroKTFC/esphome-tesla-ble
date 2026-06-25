@@ -1850,11 +1850,8 @@ namespace esphome
               }
               std::string charging_state_text = lookup_charging_state (carserver_response.response_msg.vehicleData.charge_state.charging_state.which_type);
               publishSensor (TextSensorId::ChargingState, charging_state_text.c_str());
-              if ((charging_state_text == "Charging") or (charging_state_text == "Starting") or (charging_state_text == "Calibrating"))
-              {
-                charger_switch_->publish_state(true);
-              } else {
-                charger_switch_->publish_state(false);
+              if (charger_switch_ != nullptr) {
+                charger_switch_->publish_state ((charging_state_text == "Charging") or (charging_state_text == "Starting") or (charging_state_text == "Calibrating"));
               }
             }
             else
