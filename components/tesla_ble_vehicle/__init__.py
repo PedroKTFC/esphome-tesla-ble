@@ -186,7 +186,7 @@ async def to_code(config):
         cg.add(var.set_charger_switch(sw))
     if CONF_DEFROST_SWITCH in config:
         sw = await cg.get_variable(config[CONF_DEFROST_SWITCH])
-        cg.add(var.set_charger_switch(sw))
+        cg.add(var.set_defrost_switch(sw))
 
     # 🔁 Auto-register all sensors
     for key, spec in SENSORS.items():
