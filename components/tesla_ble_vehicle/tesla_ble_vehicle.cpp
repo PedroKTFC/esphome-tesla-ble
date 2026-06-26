@@ -1848,6 +1848,7 @@ namespace esphome
                 default:
                   car_is_charging_ = NotCharging;
               }
+              charging_state_raw_ = carserver_response.response_msg.vehicleData.charge_state.charging_state.which_type;
               std::string charging_state_text = lookup_charging_state (carserver_response.response_msg.vehicleData.charge_state.charging_state.which_type);
               publishSensor (TextSensorId::ChargingState, charging_state_text.c_str());
               if (charger_switch_ != nullptr) {
