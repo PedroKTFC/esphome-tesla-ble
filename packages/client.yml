@@ -293,10 +293,10 @@ switch:
     icon: mdi:lightning-bolt
     turn_on_action:
       - lambda: |-
-          if (id(max_soc).state > id(charge_state).state) { // Only allow charging if max allowed above current charge level
+          if (id(tesla_ble_vehicle_id).get_charging_state_raw() != CarServer_ChargeState_ChargingState_Complete_tag) { // Don't allow charging if last session has completed and no more configured
             id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_CHARGING_SWITCH, 1);
           } else {
-            ESP_LOGI (esphome::tesla_ble_vehicle::TAG, "Charge request rejected as charge limit %.1f <= charge level %.1f", id(max_soc).state, id(charge_state).state);
+            ESP_LOGI (esphome::tesla_ble_vehicle::TAG, "Charge request rejected as last session has completed. Reset to enable charging, eg raise the soc limit);
           }
     turn_off_action: 
       - lambda: |-
