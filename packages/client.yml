@@ -296,7 +296,7 @@ switch:
           if (id(tesla_ble_vehicle_id).get_charging_state_raw() != CarServer_ChargeState_ChargingState_Complete_tag) { // Don't allow charging if last session has completed and no more configured
             id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_CHARGING_SWITCH, 1);
           } else {
-            ESP_LOGI (esphome::tesla_ble_vehicle::TAG, "Charge request rejected as last session has completed. Reset to enable charging, eg raise the soc limit);
+            ESP_LOGI (esphome::tesla_ble_vehicle::TAG, "Charge request rejected as last session has completed. Reset to enable charging, eg raise the soc limit");
           }
     turn_off_action: 
       - lambda: |-
