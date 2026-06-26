@@ -337,12 +337,15 @@ namespace esphome
             *   and any other tidying up carried out (eg emptying the read and response queues).
             */
             {
-            command_queue_.pop();
-            ble_read_buffer_.clear();               // Clear anything that's been received and not processed
-            if (!response_queue_.empty())           // Empty the response queue if there's anything in it
-            {
-                response_queue_.pop();
+                command_queue_.pop();
+                ble_read_buffer_.clear();               // Clear anything that's been received and not processed
+                if (!response_queue_.empty())           // Empty the response queue if there's anything in it
+                {
+                    response_queue_.pop();
+                }
             }
+            inline pb_size_t get_charging_state_raw () const {
+                return charging_state_raw_;
             }
             inline const ActionMessageDetail& get_action_detail (BLE_CarServer_VehicleAction action)
             { // Get the entry in the ACTION_SPECIFICS table corresponding to the action (we can't be sure of the order)
@@ -466,6 +469,7 @@ namespace esphome
             uint16_t handle_;
             uint16_t read_handle_{0};
             uint16_t write_handle_{0};
+            pb_size_t charging_state_raw_ {CarServer_ChargeState_ChargingState_Unknown_tag}; // We need the raw state as the text could be translated
 
             espbt::ESPBTUUID service_uuid_;
             espbt::ESPBTUUID read_uuid_;
