@@ -188,6 +188,10 @@ tesla_ble_vehicle:
     id: "driver_temp"
     name: "Climate temperature" # although it's the driver side temperature setting, use it for the overall climate setting
     disabled_by_default: true
+  charging_schedules:
+    id: "charging_schedules"
+    name: "Charging schedules"
+    internal: true
 
 button:
   - platform: template
@@ -256,6 +260,14 @@ button:
     icon: mdi:skip-previous
     on_press:
       - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::MEDIA_PREVIOUS_TRACK, 0);
+    disabled_by_default: true
+
+  - platform: template
+    id: btn_get_charge_schedule_state
+    name: Get charge schedules
+    icon: mdi:download-multiple
+    on_press:
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::GET_CHARGE_SCHEDULE_STATE, 0);
     disabled_by_default: true
 
   - platform: template
