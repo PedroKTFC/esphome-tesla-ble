@@ -1,0 +1,114 @@
+# The switch will not send commands to the car if the charing state is "complete", this way we make sure the Tesla will not wake up for chatty OBC commands.
+
+switch:
+  - platform: template
+    name: "Charger EVCC"
+    id: charger_evcc
+    optimistic: True                    # remember the switches state
+
+    # At activation only forward if the state is not Complete
+    turn_on_action:
+      - if:
+          condition:
+            - lambda: |-
+                return id(charging_state).state != "Complete";
+          then:
+            - switch.turn_on: sw_charger
+            - logger.log: "charger_evcc → charger activated"
+          else:
+            - logger.log: "charger_evcc: Activatin rejected (charge_state = complete)"
+
+    # Turning off will only be forwarded if not completed
+    turn_off_action:
+      - if:
+          condition:
+            - lambda: |-
+                return id(charging_state).state != "Complete";
+          then:
+            - switch.turn_off: sw_charger
+            - logger.log: "charger_evcc → charger turned off"
+          else:
+            - logger.log: "charger_evcc: turn off rejected (charge_state = complete)"
+
+
+# The number will not send commands to the car if the charing state is "complete", this way we make sure the Tesla will not wake up for chatty OBC commands.
+
+number:
+  - platform: template
+    name: "Charging Amps EVCC"
+    id: charging_amps_evcc
+    icon: "mdi:current-ac"
+    unit_of_measurement: "A"
+    optimistic: true
+    min_value: 0
+    max_value: $charging_amps_max
+    step: 1.0
+    set_action:
+      - if:
+          condition:
+            - lambda: |-
+                return id(charging_state).state != "Complete";
+          then:
+            - lambda: |-
+                float value = x;
+
+                // send value once
+                id(charging_amps).make_call().set_value(value).perform();
+
+                // For values below 5 send twice
+                if (value < 5.0) {
+                  delay(300);  // kurze Pause, damit der erste Befehl verarbeitet wird
+                  id(charging_amps).make_call().set_value(value).perform();
+                  ESP_LOGI("charging_amps", "Wert %.1f A (under 5) sent twice", value);
+                } else {
+                  ESP_LOGI("charging_amps", "charging_amps_evcc → %.1f A sent", value);
+                }
+          else:
+            - logger.log:
+                format: "charging_amps_evcc: %.1f A rejected (charging_state = %s)"
+                args: ['x', id(charging_state).state.c_str()]
+                level: WARN
+
+
+# charging state ISO will report the charing state in an ISO compliant way, mimicking a wall charger:
+# A: Vehicle not connected
+# B: Vehicle connected, but did not request charge
+# C: Vehicle connected and requests power
+
+text_sensor:
+  - platform: template
+    name: "Charging State ISO"
+    id: charging_state_iso
+    icon: "mdi:ev-station"
+    lambda: |-
+      static const std::map<std::string, std::string> mapping = {
+        {"Disconnected", "A"},
+        {"Stopped",      "B"},
+        {"Complete",     "B"},
+        {"Charging",     "C"},
+        {"Starting",     "C"}
+      };
+
+      const std::string& current_raw = id(charging_state).state;
+      auto it = mapping.find(current_raw);
+
+      std::string current;
+      if (it != mapping.end()) {
+        current = it->second;
+      } else {
+        current = "A";                    // Fail-Safe
+      }
+
+      // === detect change of state ===
+      static std::string previous = "";   // Merkt sich den letzten Zustand
+
+      if (current == "A" && previous != "A" && previous != "") {
+        // Change to A detected → Switch off
+        id(charger_evcc).turn_off();
+        ESP_LOGI("charging_iso", "Change to A detected → charger_evcc off");
+      }
+
+      previous = current;   // Save current state for next iteration
+
+      return {current};
+    update_interval: 5s
