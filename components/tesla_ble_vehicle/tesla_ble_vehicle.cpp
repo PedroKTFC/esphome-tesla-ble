@@ -41,6 +41,7 @@ namespace esphome
       this->write_uuid_ = espbt::ESPBTUUID::from_raw(WRITE_UUID);
       ble_disconnected_time_ = millis(); // Initialise disconnect time on startup
       ble_read_buffer_.reserve(MAX_BLE_MESSAGE_SIZE);
+      schedules_json_.reserve(2048);
 
       this->initializeFlash();
       this->openNVSHandle();
@@ -1993,6 +1994,52 @@ namespace esphome
               ESP_LOGI (TAG, "No data to set tyre pressures");
             }
             publishSensor (TextSensorId::LastUpdate, ctime(&timestamp));
+          }
+          else if (carserver_response.response_msg.vehicleData.has_charge_schedule_state)
+          {
+            auto& charge_schedule_state_ = carserver_response.response_msg.vehicleData.charge_schedule_state;
+            ESP_LOGW (TAG, "%i charge schedules found.", charge_schedule_state_.charge_schedules_count);
+            schedules_json_.clear();
+            schedules_json_ = "{\"version\":0.1,\"comment\":\"Fields starting with * are derived\",\"number\":" + std::to_string (charge_schedule_state_.charge_schedules_count) + ",\"charge_schedules\": [";
+            char hhmm_[8];
+            for (size_t i = 0; i < charge_schedule_state_.charge_schedules_count; i++)
+            {
+              const auto &s = charge_schedule_state_.charge_schedules[i];
+              if (i != 0)
+                  schedules_json_ += ",";
+              schedules_json_ += "{\"id\":";
+              schedules_json_ += std::to_string(s.id);
+              schedules_json_ += ",\"name\":";
+              schedules_json_ = schedules_json_ + "\"" + s.name + "\"";
+              schedules_json_ += ",\"days\":";
+              schedules_json_ += std::to_string(s.days_of_week);
+              schedules_json_ = schedules_json_ + ",\"*days\":\"" + days_to_string(s.days_of_week) + "\"";
+              schedules_json_ += ",\"start_enabled\":";
+              schedules_json_ += s.start_enabled ? "true" : "false";
+              schedules_json_ += ",\"start_time\":";
+              schedules_json_ += std::to_string(s.start_time);
+              schedules_json_ += ",\"*start_time\":";
+              snprintf (hhmm_, sizeof (hhmm_), "\"%02d:%02d\"", (s.start_time / 60), (s.start_time % 60));
+              schedules_json_ += hhmm_;
+              schedules_json_ += ",\"end_enabled\":";
+              schedules_json_ += s.end_enabled ? "true" : "false";
+              schedules_json_ += ",\"end_time\":";
+              schedules_json_ += std::to_string(s.end_time);
+              schedules_json_ += ",\"*end_time\":";
+              snprintf (hhmm_, sizeof (hhmm_), "\"%02d:%02d\"", (s.end_time / 60), (s.end_time % 60));
+              schedules_json_ += hhmm_;
+              schedules_json_ += ",\"one_time\":";
+              schedules_json_ += s.one_time ? "true" : "false";
+              schedules_json_ += ",\"enabled\":";
+              schedules_json_ += s.enabled ? "true" : "false";
+//                schedules_json_ += ",\"latitude\":";
+//                schedules_json_ += std::to_string(s.latitude);
+//                schedules_json_ += ",\"longitude\":";
+//                schedules_json_ += std::to_string(s.longitude);
+              schedules_json_ += "}";
+            }
+            schedules_json_ += "]}";
+            publishSensor (TextSensorId::ChargingSchedules, schedules_json_);
           }
           break;
         case 0: // No data in the response but presumably otherwise ok (controls) 
