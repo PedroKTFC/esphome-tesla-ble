@@ -64,6 +64,7 @@ namespace esphome
             MEDIA_PREVIOUS_TRACK,
             SET_LOW_POWER_MODE_SWITCH,
             SET_KEEP_ACCESSORY_SWITCH,
+            GET_CHARGE_SCHEDULE_STATE,
             _COUNT  // sentinel value to get count of entries
         };
         enum class AllowedMsg // The type of messages to send
@@ -84,6 +85,7 @@ namespace esphome
             GetDriveState,
             GetLocationState,
             GetClosureState,
+            GetChargesState, // *************** NEEDS IMPLEMENTING **********************
             Invalid // Eg a data read, sensor not yet implemented, etc
         };
 
@@ -101,7 +103,7 @@ namespace esphome
             GetOnSet getOnSet;
             int numberUpdatesBetweenGets; // Only used for GetVehicleDataMessage
         };
-        static constexpr std::array<ActionMessageDetail, 25> ACTION_SPECIFICS // Don't forget to increase the size when adding a row
+        static constexpr std::array<ActionMessageDetail, 26> ACTION_SPECIFICS // Don't forget to increase the size when adding a row
         {{
             {BLE_CarServer_VehicleAction::DO_NOTHING,                       "",                          AllowedMsg::Empty,                 0,                                                              GetOnSet::Invalid,         0},
             {BLE_CarServer_VehicleAction::GET_CHARGE_STATE,                 "getChargeState",            AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getChargeState_tag,                    GetOnSet::Invalid,         1},
@@ -128,6 +130,7 @@ namespace esphome
             {BLE_CarServer_VehicleAction::MEDIA_PREVIOUS_TRACK,             "mediaPreviousTrack",        AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_mediaPreviousTrack_tag,                 GetOnSet::Invalid,         0},
             {BLE_CarServer_VehicleAction::SET_LOW_POWER_MODE_SWITCH,        "setLowPowerModeSwitch",     AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_setLowPowerModeAction_tag,              GetOnSet::Invalid,         0},
             {BLE_CarServer_VehicleAction::SET_KEEP_ACCESSORY_SWITCH,        "setKeepAccessorySwitch",    AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_setKeepAccessoryPowerModeAction_tag,  	GetOnSet::Invalid,         0},
+            {BLE_CarServer_VehicleAction::GET_CHARGE_SCHEDULE_STATE,        "getChargeScheduleState",    AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getChargeScheduleState_tag,          	GetOnSet::Invalid,         1},
         }};
         static_assert(ACTION_SPECIFICS.size() == static_cast<std::size_t>(BLE_CarServer_VehicleAction::_COUNT), "ACTION_SPECIFICS out of sync with enum");
         static const char *const TAG = "tesla_ble_vehicle";
@@ -236,6 +239,7 @@ namespace esphome
             ChargingState,
             ChargePortLatchState,
             LastUpdate,
+            ChargingSchedules,
             Count
         };
         enum class NumericSensorId : uint8_t {
@@ -344,7 +348,8 @@ namespace esphome
                     response_queue_.pop();
                 }
             }
-            inline pb_size_t get_charging_state_raw () const {
+            inline pb_size_t get_charging_state_raw () const
+            {
                 return charging_state_raw_;
             }
             inline const ActionMessageDetail& get_action_detail (BLE_CarServer_VehicleAction action)
@@ -457,6 +462,21 @@ namespace esphome
                 }
                 return "Charge port latch state look up error";
             }
+            std::string days_to_string (int32_t days)
+            {
+                static const char *const names[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+                std::string result;
+                for (int i = 0; i < 7; i++)
+                {
+                    if (days & (1 << i))
+                    {
+                        if (!result.empty())
+                            result += ", ";
+                        result += names[i];
+                    }
+                }
+                return result;
+            }
 
         protected:
             std::queue<BLERXChunk> ble_read_queue_;
@@ -470,6 +490,7 @@ namespace esphome
             uint16_t read_handle_{0};
             uint16_t write_handle_{0};
             pb_size_t charging_state_raw_ {CarServer_ChargeState_ChargingState_Unknown_tag}; // We need the raw state as the text could be translated
+            std::string schedules_json_;
 
             espbt::ESPBTUUID service_uuid_;
             espbt::ESPBTUUID read_uuid_;
