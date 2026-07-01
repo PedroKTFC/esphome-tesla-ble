@@ -291,6 +291,12 @@ switch:
     name: "Charger"
     optimistic: true
     icon: mdi:lightning-bolt
+    lambda: |-
+      if ((id(charging_state).state == "Charging") or (id(charging_state).state == "Starting") or (id(charging_state).state == "Calibrating")) {
+        return true;
+      } else {
+        return false;
+      }
     turn_on_action:
       - lambda: |-
           if (id(tesla_ble_vehicle_id).get_charging_state_raw() != CarServer_ChargeState_ChargingState_Complete_tag) { // Don't allow charging if last session has completed and no more configured
