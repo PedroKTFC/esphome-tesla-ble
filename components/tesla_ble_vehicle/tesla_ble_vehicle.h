@@ -18,6 +18,7 @@
 #include <esphome/components/esp32_ble_tracker/esp32_ble_tracker.h>
 #include <esphome/core/component.h>
 #include <esphome/core/log.h>
+#include <esphome/components/api/custom_api_device.h>
 
 #include <universal_message.pb.h>
 #include <vcsec.pb.h>
@@ -85,7 +86,6 @@ namespace esphome
             GetDriveState,
             GetLocationState,
             GetClosureState,
-            GetChargesState, // *************** NEEDS IMPLEMENTING **********************
             Invalid // Eg a data read, sensor not yet implemented, etc
         };
 
@@ -130,7 +130,7 @@ namespace esphome
             {BLE_CarServer_VehicleAction::MEDIA_PREVIOUS_TRACK,             "mediaPreviousTrack",        AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_mediaPreviousTrack_tag,                 GetOnSet::Invalid,         0},
             {BLE_CarServer_VehicleAction::SET_LOW_POWER_MODE_SWITCH,        "setLowPowerModeSwitch",     AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_setLowPowerModeAction_tag,              GetOnSet::Invalid,         0},
             {BLE_CarServer_VehicleAction::SET_KEEP_ACCESSORY_SWITCH,        "setKeepAccessorySwitch",    AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_setKeepAccessoryPowerModeAction_tag,  	GetOnSet::Invalid,         0},
-            {BLE_CarServer_VehicleAction::GET_CHARGE_SCHEDULE_STATE,        "getChargeScheduleState",    AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getChargeScheduleState_tag,          	GetOnSet::Invalid,         1},
+            {BLE_CarServer_VehicleAction::GET_CHARGE_SCHEDULE_STATE,        "getChargeScheduleState",    AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getChargeScheduleState_tag,          	GetOnSet::Invalid,         0},
         }};
         static_assert(ACTION_SPECIFICS.size() == static_cast<std::size_t>(BLE_CarServer_VehicleAction::_COUNT), "ACTION_SPECIFICS out of sync with enum");
         static const char *const TAG = "tesla_ble_vehicle";
@@ -268,7 +268,8 @@ namespace esphome
         };
 
         class TeslaBLEVehicle : public PollingComponent,
-                                public ble_client::BLEClientNode
+                                public ble_client::BLEClientNode,
+                                public esphome::api::CustomAPIDevice
         {
         public:
             int post_wake_poll_time_;
