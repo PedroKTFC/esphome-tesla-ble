@@ -2000,7 +2000,7 @@ namespace esphome
             auto& charge_schedule_state_ = carserver_response.response_msg.vehicleData.charge_schedule_state;
             ESP_LOGW (TAG, "%i charge schedules found.", charge_schedule_state_.charge_schedules_count);
             schedules_json_.clear();
-            schedules_json_ = "{\"version\":0.1,\"comment\":\"Fields starting with * are derived\",\"number\":" + std::to_string (charge_schedule_state_.charge_schedules_count) + ",\"charge_schedules\": [";
+            schedules_json_ = "{\"charge_schedules\": [";
             char hhmm_[8];
             for (size_t i = 0; i < charge_schedule_state_.charge_schedules_count; i++)
             {
@@ -2040,6 +2040,11 @@ namespace esphome
             }
             schedules_json_ += "]}";
             publishSensor (TextSensorId::ChargingSchedules, schedules_json_);
+            fire_homeassistant_event ("esphome.tesla_schedules_updated", {
+                    {"version", "0.1"},
+                    {"comment", "Fields starting with * are derived"},
+                    {"count", std::to_string(charge_schedule_state_.charge_schedules_count)},
+                    {"schedules", schedules_json_} });
           }
           break;
         case 0: // No data in the response but presumably otherwise ok (controls) 
