@@ -188,10 +188,6 @@ tesla_ble_vehicle:
     id: "driver_temp"
     name: "Climate temperature" # although it's the driver side temperature setting, use it for the overall climate setting
     disabled_by_default: true
-  charging_schedules:
-    id: "charging_schedules"
-    name: "Charging schedules"
-    internal: true
 
 button:
   - platform: template
@@ -303,6 +299,14 @@ switch:
     name: "Charger"
     optimistic: true
     icon: mdi:lightning-bolt
+#    restore_mode: RESTORE_DEFAULT_OFF
+    lambda: |-
+      if ((id(charging_state).state == "Charging") or (id(charging_state).state == "Starting") or (id(charging_state).state == "Calibrating")) {
+        return true;
+      } else {
+        return false;
+
+        }
     turn_on_action:
       - lambda: |-
           if (id(tesla_ble_vehicle_id).get_charging_state_raw() != CarServer_ChargeState_ChargingState_Complete_tag) { // Don't allow charging if last session has completed and no more configured
@@ -386,6 +390,12 @@ switch:
     name: Defrost car
     optimistic: true
     icon: mdi:snowflake-melt
+#    lambda: |-
+#      if (id(defrost_state).state != "Off") {
+#        return true;
+#      } else {
+#        return false;
+#      }
     turn_on_action:
       - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::DEFROST_CAR, 1);
     turn_off_action:
