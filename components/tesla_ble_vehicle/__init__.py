@@ -116,8 +116,6 @@ SENSORS = {
         icon = "mdi:surround-sound-3-1", device_class = "", state_class = STATE_CLASS_MEASUREMENT, accuracy_decimals = 0,),
     "charge_rate": numeric (NumericSensorId.ChargeRate,
         icon = "mdi:speedometer", device_class = sensor.DEVICE_CLASS_SPEED, accuracy_decimals = 0, unit_of_measurement = "mph",),
-    "charging_schedules": text (TextSensorId.ChargingSchedules,
-        icon = "mdi:alarm",),
 }
 
 SENSOR_TYPES_INFO = {
