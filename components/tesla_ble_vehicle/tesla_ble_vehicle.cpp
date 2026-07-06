@@ -2032,10 +2032,10 @@ namespace esphome
               schedules_json_ += s.one_time ? "true" : "false";
               schedules_json_ += ",\"enabled\":";
               schedules_json_ += s.enabled ? "true" : "false";
-//                schedules_json_ += ",\"latitude\":";
-//                schedules_json_ += std::to_string(s.latitude);
-//                schedules_json_ += ",\"longitude\":";
-//                schedules_json_ += std::to_string(s.longitude);
+              schedules_json_ += ",\"latitude\":";
+              schedules_json_ += std::to_string(s.latitude);
+              schedules_json_ += ",\"longitude\":";
+              schedules_json_ += std::to_string(s.longitude);
               schedules_json_ += "}";
             }
             schedules_json_ += "]}";
