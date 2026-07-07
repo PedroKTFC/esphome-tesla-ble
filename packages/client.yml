@@ -390,12 +390,12 @@ switch:
     name: Defrost car
     optimistic: true
     icon: mdi:snowflake-melt
-#    lambda: |-
-#      if (id(defrost_state).state != "Off") {
-#        return true;
-#      } else {
-#        return false;
-#      }
+    lambda: |-
+      if (id(defrost_state).state != "Off") {
+        return true;
+      } else {
+        return false;
+      }
     turn_on_action:
       - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::DEFROST_CAR, 1);
     turn_off_action:
