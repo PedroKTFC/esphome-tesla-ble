@@ -2039,7 +2039,6 @@ namespace esphome
               schedules_json_ += "}";
             }
             schedules_json_ += "]}";
-            publishSensor (TextSensorId::ChargingSchedules, schedules_json_);
             fire_homeassistant_event ("esphome.tesla_schedules_updated", {
                     {"version", "0.1"},
                     {"comment", "Fields starting with * are derived"},
