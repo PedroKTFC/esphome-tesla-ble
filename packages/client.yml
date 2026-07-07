@@ -259,6 +259,14 @@ button:
     disabled_by_default: true
 
   - platform: template
+    id: btn_get_charge_schedule_state
+    name: Get charge schedules
+    icon: mdi:download-multiple
+    on_press:
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::GET_CHARGE_SCHEDULE_STATE, 0);
+    disabled_by_default: true
+
+  - platform: template
     id: btn_regenerate_key
     name: Regenerate key
     icon: mdi:key-change
@@ -380,6 +388,12 @@ switch:
     name: Defrost car
     optimistic: true
     icon: mdi:snowflake-melt
+    lambda: |-
+      if (id(defrost_state).state != "Off") {
+        return true;
+      } else {
+        return false;
+      }
     turn_on_action:
       - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::DEFROST_CAR, 1);
     turn_off_action:
