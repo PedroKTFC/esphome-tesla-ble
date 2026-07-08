@@ -6,7 +6,7 @@ switch:
     id: charger_evcc
     optimistic: True                    # remember the switches state
 
-    # At activation only forward if the state is not Complete
+    # Beim Einschalten nur weiterleiten, wenn Ladevorgang nicht abgeschlossen ist
     turn_on_action:
       - if:
           condition:
@@ -14,11 +14,11 @@ switch:
                 return id(charging_state).state != "Complete";
           then:
             - switch.turn_on: sw_charger
-            - logger.log: "charger_evcc → charger activated"
+            - logger.log: "charger_evcc → charger eingeschaltet"
           else:
-            - logger.log: "charger_evcc: Activatin rejected (charge_state = complete)"
+            - logger.log: "charger_evcc: Einschalten verweigert (charge_state = complete)"
 
-    # Turning off will only be forwarded if not completed
+    # Beim Ausschalten immer weiterleiten
     turn_off_action:
       - if:
           condition:
@@ -26,9 +26,9 @@ switch:
                 return id(charging_state).state != "Complete";
           then:
             - switch.turn_off: sw_charger
-            - logger.log: "charger_evcc → charger turned off"
+            - logger.log: "charger_evcc → charger ausgeschaltet"
           else:
-            - logger.log: "charger_evcc: turn off rejected (charge_state = complete)"
+            - logger.log: "charger_evcc: Ausschalten verweigert (charge_state = complete)"
 
 
 # The number will not send commands to the car if the charing state is "complete", this way we make sure the Tesla will not wake up for chatty OBC commands.
@@ -51,24 +51,20 @@ number:
           then:
             - lambda: |-
                 float value = x;
+                id(charging_amps_evcc).publish_state(value);
 
-                // send value once
-                id(charging_amps).make_call().set_value(value).perform();
-
-                // For values below 5 send twice
                 if (value < 5.0) {
-                  delay(300);  // kurze Pause, damit der erste Befehl verarbeitet wird
-                  id(charging_amps).make_call().set_value(value).perform();
-                  ESP_LOGI("charging_amps", "Wert %.1f A (under 5) sent twice", value);
+                  id(pending_charge_current) = value;   // Für das Script vorbereiten
+                  id(set_charge_current_evcc).execute();
                 } else {
-                  ESP_LOGI("charging_amps", "charging_amps_evcc → %.1f A sent", value);
+                  id(charging_amps).make_call().set_value(value).perform();
+                  ESP_LOGD("charging_amps", "sent charging_amps_evcc → %.1f A", value);
                 }
           else:
             - logger.log:
-                format: "charging_amps_evcc: %.1f A rejected (charging_state = %s)"
+                format: "charging_amps_evcc: %.1f A blockiert (charging_state = %s)"
                 args: ['x', id(charging_state).state.c_str()]
                 level: WARN
-
 
 # charging state ISO will report the charing state in an ISO compliant way, mimicking a wall charger:
 # A: Vehicle not connected
@@ -99,16 +95,37 @@ text_sensor:
         current = "A";                    // Fail-Safe
       }
 
-      // === detect change of state ===
-      static std::string previous = "";   // Merkt sich den letzten Zustand
+      // === Zustandswechsel-Erkennung ===
+      static std::string previous = "";   // store last state
 
       if (current == "A" && previous != "A" && previous != "") {
-        // Change to A detected → Switch off
+        // Wechsel zu A erfolgt → Switch ausschalten
         id(charger_evcc).turn_off();
-        ESP_LOGI("charging_iso", "Change to A detected → charger_evcc off");
+        ESP_LOGD("charging_iso", "ISO-state change to A (disconnected/absent) detected → turned off charger_evcc");
       }
 
       previous = current;   // Save current state for next iteration
 
       return {current};
     update_interval: 5s
+
+script:
+  - id: set_charge_current_evcc
+    mode: restart
+    then:
+      - lambda: |-
+          float value = id(pending_charge_current);
+          id(charging_amps).make_call().set_value(value).perform();
+          ESP_LOGD("charging_amps", "sending first set_current command: %.1f A", value);
+
+      - delay: 3s
+
+      - lambda: |-
+          float value = id(pending_charge_current);
+          id(charging_amps).make_call().set_value(value).perform();
+          ESP_LOGD("charging_amps", "sending second set_current command (<5A): %.1f A", value);
+
+globals:
+  - id: pending_charge_current
+    type: float
+    restore_value: false
