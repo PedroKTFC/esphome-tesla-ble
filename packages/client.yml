@@ -673,3 +673,21 @@ number:
     on_value:
       - lambda: |-
           id(tesla_ble_vehicle_id)->ble_disconnected_min_time_ = x * 1000;
+
+text:
+  - platform: template
+    name: "Delete a charging schedule"
+    id: del_charging_schedule
+    icon: mdi:delete-clock
+    mode: text
+    update_interval: 2s
+    set_action:
+      - lambda: |-
+          uint64_t id = strtoull(x.c_str(), nullptr, 10);
+          if (id == 0)
+          {
+            ESP_LOGW("client.yml", "Invalid charging schedule ID %s, schedule delete not sent", x.c_str());
+            return;
+          }
+          id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::DEL_CHARGING_SCHEDULE, 0, id);
+    disabled_by_default: true
