@@ -10,4 +10,16 @@ text sensor is 255 characters). The event data needs to be captured into an HA e
 
 All controls are disabled by default.
 
-My thanks to [iancg](https://github.com/iancg) for his input in using templating to extract the data from the event into a sensor's attirbutes and the use of the markdown card to display the schedules which I've shamelessly plagiarised!
+My thanks to [iancg](https://github.com/iancg) for his input in using templating to extract the data from the event into a sensor's attributes and the use of the markdown card to display the schedules which I've shamelessly plagiarised!
+
+# Reading the charging schedules
+All the charging schedules in the car are read in one go and returned to HA as JSON data through the event **esphome.tesla_schedules_updated**. The event is fired on demand by "pressing" the button **Get charge schedules** (which is disabled by default). The event includes the following data fields (for the complete and up to date view, use the `developer tools` in HA to see the contents of the event):
+
+| Field | Description |
+| --- | --- |
+| comment | Some helpful text, at the time of writing: *Fields starting with * are derived* |
+| count | The number of schedules returned |
+| schedules | The actual schedules in JSON format |
+| version | To track the code version |
+
+There is a one-to-one correspondence between the JSON fields in the schedules and the data from the car except for those that start with a * which are derived (for example, *days* is a bitfield whereas **days* is a human readable version decoded from the bitfield). 
