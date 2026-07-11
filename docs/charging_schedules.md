@@ -10,4 +10,4 @@ text sensor is 255 characters). The event data needs to be captured into an HA e
 
 All controls are disabled by default.
 
-My thanks to 
+My thanks to [iancg](https://github.com/iancg) for his input in using templating to extract the data from the event into a sensor's attirbutes and the use of the markdown card to display the schedules which I've shamelessly plagiarised!
