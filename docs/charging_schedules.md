@@ -23,3 +23,37 @@ All the charging schedules in the car are read in one go and returned to HA as J
 | version | To track the code version |
 
 There is a one-to-one correspondence between the JSON fields in the schedules and the data from the car except for those that start with a * which are derived (for example, *days* is a bitfield whereas **days* is a human readable version decoded from the bitfield). 
+
+# Using and displaying charging schedules in Home Assistant
+Probably the easiest way to use charging schedules in HA is to read them into the attributes of a dedicated sensor, where they can then be displayed and read in, for example, automations.
+
+## Reading the event data into a sensor
+The following yaml, when added to your configuration.yaml, will cause the sensor `Charging schedules` to be updated whenever the **esphome.tesla_schedules_updated** event fires. The value of the sensor is the number of charging schedules and the JSON data is decoded into the attributes of the sensor.
+
+## Displaying the charging schedules
+There are many ways of displaying the charging schedules. This section describes one approach which also shows how to access the charging schedules in the sensor attributes. Using a `markup card`, each charging schedule can be displayed as desired. The following is an example:
+```
+type: markdown
+content: >
+  Number of schedules:  {{states('sensor.charging_schedules')}}
+
+  |#| ID | Days | Start | End | Lat | Long|  Enabled | One-Time | Name |
+
+  |:--:| :--:| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+
+  {% set schedules = state_attr('sensor.charging_schedules',
+  'charge_schedules')%} {% if schedules %} {% for sched in schedules %} | {{
+  loop.index }} | {{ sched['id'] }} | {{ sched['*days'] }} | {{
+  sched['*start_time'] }} | {{ sched['*end_time'] }} | {{ sched['latitude'] }} |
+  {{ sched['longitude'] }} | {{'✅' if sched['enabled'] else '❌' }} | {{ '✅' if
+  sched['one_time'] else '❌' }}| {{sched['name'] }} |
+
+  {% endfor %}
+
+  {% else %} |0| No schedules found | | | | | {%-endif %}
+title: Scheduled Charges
+```
+Which produces the following display:
+
+<img width="792" height="252" alt="image" src="https://github.com/user-attachments/assets/4045d442-0f4a-459b-9cff-71fe3ba08241" />
+
