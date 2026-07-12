@@ -6,12 +6,12 @@ substitutions:
   BLE_library: "https://github.com/PedroKTFC/tesla-ble.git"
   tesla_ble_component: "github://PedroKTFC/esphome-tesla-ble"
   ble_presence_timeout: 30s
-  ble_components: [tesla_ble_vehicle]
+  ble_components: [tesla_ble_vehicle, tesla_ble_listener]
 
 esphome:
   project:
     name: PedroKTFC.esphome-tesla-ble
-    version: "2026.5.1"
+    version: "2026.7.0"
   name: ${device_name}
   name_add_mac_suffix: false
   friendly_name: ${friendly_name}
@@ -43,3 +43,6 @@ wifi:
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     password: !secret wifi_hotspot_password
+
+api:
+  homeassistant_services: true

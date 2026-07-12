@@ -1,6 +1,6 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import ble_client, binary_sensor, text_sensor, sensor
+from esphome.components import ble_client, binary_sensor, text_sensor, sensor, switch
 from esphome.const import CONF_ID, STATE_CLASS_MEASUREMENT
 from enum import Enum, auto
 from dataclasses import dataclass
@@ -29,14 +29,11 @@ class SensorSpec:
     setter_id: cg.MockObj
     schema_options: Dict[str, Any]
 
-#AUTO_LOAD = ["binary_sensor", "sensor", "text_sensor"]
+#AUTO_LOAD = ["switch", "binary_sensor", "sensor", "text_sensor"]
 
-def binary(id, **schema):
-    return SensorSpec(SensorTypes.BINARY, id, schema)
-def numeric(id, **schema):
-    return SensorSpec(SensorTypes.NUMERIC, id, schema)
-def text(id, **schema):
-    return SensorSpec(SensorTypes.TEXT, id, schema)
+def binary(id, **schema):        return SensorSpec(SensorTypes.BINARY, id, schema)
+def numeric(id, **schema):       return SensorSpec(SensorTypes.NUMERIC, id, schema)
+def text(id, **schema):          return SensorSpec(SensorTypes.TEXT, id, schema)
 
 # Constants
 CONF_VIN = "vin"
@@ -47,12 +44,13 @@ CONF_POLL_CHARGING_PERIOD = "poll_charging_period" # Period to poll for data whe
 CONF_BLE_DISCONNECTED_MIN_TIME = "ble_disconnected_min_time" # Minimum time BLE must be disconnected before sensors are Unknown (s)
 CONF_FAST_POLL_IF_UNLOCKED = "fast_poll_if_unlocked" # if != 0, fast polls are enabled when unlocked
 CONF_WAKE_ON_BOOT = "wake_on_boot" # != 0 wakes car on device boot
+CONF_CHARGER_SWITCH = "charger_switch"
+CONF_DEFROST_SWITCH = "defrost_switch"
 
 SENSORS = {
     "is_asleep": binary (BinarySensorId.IsAsleep,
         icon = "mdi:sleep",),
-    "is_unlocked": binary (
-        BinarySensorId.IsUnlocked,
+    "is_unlocked": binary (BinarySensorId.IsUnlocked,
         device_class = binary_sensor.DEVICE_CLASS_LOCK,),
     "is_user_present": binary (BinarySensorId.IsUserPresent,
         icon = "mdi:account-check", device_class = binary_sensor.DEVICE_CLASS_OCCUPANCY,),
@@ -150,6 +148,10 @@ schema_dict = {
     cv.Optional(CONF_FAST_POLL_IF_UNLOCKED): cv.uint16_t,
     cv.Optional(CONF_WAKE_ON_BOOT): cv.uint16_t,
 }
+
+schema_dict[cv.Optional(CONF_CHARGER_SWITCH)] = cv.use_id(switch.Switch)
+schema_dict[cv.Optional(CONF_DEFROST_SWITCH)] = cv.use_id(switch.Switch)
+
 for key, spec in SENSORS.items():
     builder = SENSOR_TYPES_INFO[spec.type]["schema"]
     schema_dict[cv.Optional(key)] = (builder(**spec.schema_options))
@@ -159,6 +161,7 @@ CONFIG_SCHEMA = (
     .extend(cv.polling_component_schema("1min"))
     .extend(ble_client.BLE_CLIENT_SCHEMA)
 )
+
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
@@ -177,6 +180,14 @@ async def to_code(config):
             config.get(CONF_WAKE_ON_BOOT),
         )
     )
+
+    if CONF_CHARGER_SWITCH in config:
+        sw = await cg.get_variable(config[CONF_CHARGER_SWITCH])
+        cg.add(var.set_charger_switch(sw))
+    if CONF_DEFROST_SWITCH in config:
+        sw = await cg.get_variable(config[CONF_DEFROST_SWITCH])
+        cg.add(var.set_defrost_switch(sw))
+
     # 🔁 Auto-register all sensors
     for key, spec in SENSORS.items():
         if key not in config:

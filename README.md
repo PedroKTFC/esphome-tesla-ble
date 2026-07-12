@@ -98,6 +98,10 @@ There are two categories, those available even when asleep and those only when a
   - Tyre pressures (bar). The four sensors - front left, front right, rear left, rear right - are disabled by default. 
   - Windows open/closed
 
+### Charging schedules
+
+Please refer to [charging_schedules.md](./docs/charging_schedules.md) for how to view and delete charging schedules.
+
 ### Diagnostics
 
 These are the diagnostic button actions:

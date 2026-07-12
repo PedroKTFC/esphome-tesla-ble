@@ -13,10 +13,12 @@
 #include <esphome/components/binary_sensor/binary_sensor.h>
 #include <esphome/components/text_sensor/text_sensor.h>
 #include <esphome/components/sensor/sensor.h>
+#include <esphome/components/switch/switch.h>
 #include <esphome/components/ble_client/ble_client.h>
 #include <esphome/components/esp32_ble_tracker/esp32_ble_tracker.h>
 #include <esphome/core/component.h>
 #include <esphome/core/log.h>
+#include <esphome/components/api/custom_api_device.h>
 
 #include <universal_message.pb.h>
 #include <vcsec.pb.h>
@@ -63,6 +65,8 @@ namespace esphome
             MEDIA_PREVIOUS_TRACK,
             SET_LOW_POWER_MODE_SWITCH,
             SET_KEEP_ACCESSORY_SWITCH,
+            GET_CHARGE_SCHEDULE_STATE,
+            DEL_CHARGING_SCHEDULE,
             _COUNT  // sentinel value to get count of entries
         };
         enum class AllowedMsg // The type of messages to send
@@ -83,6 +87,7 @@ namespace esphome
             GetDriveState,
             GetLocationState,
             GetClosureState,
+            GetChargeScheduleState,
             Invalid // Eg a data read, sensor not yet implemented, etc
         };
 
@@ -100,33 +105,35 @@ namespace esphome
             GetOnSet getOnSet;
             int numberUpdatesBetweenGets; // Only used for GetVehicleDataMessage
         };
-        static constexpr std::array<ActionMessageDetail, 25> ACTION_SPECIFICS // Don't forget to increase the size when adding a row
+        static constexpr std::array<ActionMessageDetail, 27> ACTION_SPECIFICS // Don't forget to increase the size when adding a row
         {{
-            {BLE_CarServer_VehicleAction::DO_NOTHING,                       "",                          AllowedMsg::Empty,                 0,                                                              GetOnSet::Invalid,         0},
-            {BLE_CarServer_VehicleAction::GET_CHARGE_STATE,                 "getChargeState",            AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getChargeState_tag,                    GetOnSet::Invalid,         1},
-            {BLE_CarServer_VehicleAction::GET_CLIMATE_STATE,                "getClimateState",           AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getClimateState_tag,                   GetOnSet::Invalid,         5},
-            {BLE_CarServer_VehicleAction::GET_DRIVE_STATE,                  "getDriveState",             AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getDriveState_tag,                     GetOnSet::Invalid,         1},
-            {BLE_CarServer_VehicleAction::GET_LOCATION_STATE,               "getLocationState",          AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getLocationState_tag,                  GetOnSet::Invalid,         10},
-            {BLE_CarServer_VehicleAction::GET_CLOSURES_STATE,               "getClosuresState",          AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getClosuresState_tag,                  GetOnSet::Invalid,         6},
-            {BLE_CarServer_VehicleAction::GET_TYRES_STATE,                  "getTyresState",             AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getTirePressureState_tag,              GetOnSet::Invalid,         17},
-            {BLE_CarServer_VehicleAction::SET_CHARGING_SWITCH,              "setChargingSwitch",         AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_chargingStartStopAction_tag,            GetOnSet::GetChargeState,  0},
-            {BLE_CarServer_VehicleAction::SET_CHARGING_AMPS,                "setChargingAmps",           AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_setChargingAmpsAction_tag,              GetOnSet::GetChargeState,  0},
-            {BLE_CarServer_VehicleAction::SET_CHARGING_LIMIT,               "setChargingLimit",          AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_chargingSetLimitAction_tag,             GetOnSet::GetChargeState,  0},
-            {BLE_CarServer_VehicleAction::SET_SENTRY_SWITCH,                "setSentrySwitch",           AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_vehicleControlSetSentryModeAction_tag,  GetOnSet::Invalid,         0},
-            {BLE_CarServer_VehicleAction::SET_HVAC_SWITCH,                  "setHVACSwitch",             AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_hvacAutoAction_tag,                     GetOnSet::GetClimateState, 0},
-            {BLE_CarServer_VehicleAction::SET_HVAC_STEERING_HEATER_SWITCH,  "setHVACSteeringHeatSwitch", AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_hvacSteeringWheelHeaterAction_tag,      GetOnSet::Invalid,         0},
-            {BLE_CarServer_VehicleAction::SET_OPEN_CHARGE_PORT_DOOR,        "setOpenChargePortDoor",     AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_chargePortDoorOpen_tag,                 GetOnSet::Invalid,         0},
-            {BLE_CarServer_VehicleAction::SET_CLOSE_CHARGE_PORT_DOOR,       "setCloseChargePortDoor",    AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_chargePortDoorClose_tag,                GetOnSet::Invalid,         0},
-            {BLE_CarServer_VehicleAction::SOUND_HORN,                       "soundHorn",                 AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_vehicleControlHonkHornAction_tag,       GetOnSet::Invalid,         0},
-            {BLE_CarServer_VehicleAction::FLASH_LIGHT,                      "flashLight",                AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_vehicleControlFlashLightsAction_tag,    GetOnSet::Invalid,         0},
-            {BLE_CarServer_VehicleAction::SET_WINDOWS_SWITCH,               "setWindowsSwitch",          AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_vehicleControlWindowAction_tag,         GetOnSet::GetClosureState, 0},
-            {BLE_CarServer_VehicleAction::DEFROST_CAR,                      "defrostCar",                AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_hvacSetPreconditioningMaxAction_tag,    GetOnSet::GetClimateState, 0},
-            {BLE_CarServer_VehicleAction::SET_CLIMATE_TEMP,                 "setClimateTemp",            AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_hvacTemperatureAdjustmentAction_tag,    GetOnSet::GetClimateState, 0},
-            {BLE_CarServer_VehicleAction::MEDIA_PLAY,                       "mediaPlay",                 AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_mediaPlayAction_tag,                    GetOnSet::Invalid,         0},
-            {BLE_CarServer_VehicleAction::MEDIA_NEXT_TRACK,                 "mediaNextTrack",            AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_mediaNextTrack_tag,                     GetOnSet::Invalid,         0},
-            {BLE_CarServer_VehicleAction::MEDIA_PREVIOUS_TRACK,             "mediaPreviousTrack",        AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_mediaPreviousTrack_tag,                 GetOnSet::Invalid,         0},
-            {BLE_CarServer_VehicleAction::SET_LOW_POWER_MODE_SWITCH,        "setLowPowerModeSwitch",     AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_setLowPowerModeAction_tag,              GetOnSet::Invalid,         0},
-            {BLE_CarServer_VehicleAction::SET_KEEP_ACCESSORY_SWITCH,        "setKeepAccessorySwitch",    AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_setKeepAccessoryPowerModeAction_tag,  	GetOnSet::Invalid,         0},
+            {BLE_CarServer_VehicleAction::DO_NOTHING,                       "",                          AllowedMsg::Empty,                 0,                                                              GetOnSet::Invalid,                0},
+            {BLE_CarServer_VehicleAction::GET_CHARGE_STATE,                 "getChargeState",            AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getChargeState_tag,                    GetOnSet::Invalid,                1},
+            {BLE_CarServer_VehicleAction::GET_CLIMATE_STATE,                "getClimateState",           AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getClimateState_tag,                   GetOnSet::Invalid,                5},
+            {BLE_CarServer_VehicleAction::GET_DRIVE_STATE,                  "getDriveState",             AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getDriveState_tag,                     GetOnSet::Invalid,                1},
+            {BLE_CarServer_VehicleAction::GET_LOCATION_STATE,               "getLocationState",          AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getLocationState_tag,                  GetOnSet::Invalid,               10},
+            {BLE_CarServer_VehicleAction::GET_CLOSURES_STATE,               "getClosuresState",          AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getClosuresState_tag,                  GetOnSet::Invalid,                6},
+            {BLE_CarServer_VehicleAction::GET_TYRES_STATE,                  "getTyresState",             AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getTirePressureState_tag,              GetOnSet::Invalid,               17},
+            {BLE_CarServer_VehicleAction::SET_CHARGING_SWITCH,              "setChargingSwitch",         AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_chargingStartStopAction_tag,            GetOnSet::GetChargeState,         0},
+            {BLE_CarServer_VehicleAction::SET_CHARGING_AMPS,                "setChargingAmps",           AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_setChargingAmpsAction_tag,              GetOnSet::GetChargeState,         0},
+            {BLE_CarServer_VehicleAction::SET_CHARGING_LIMIT,               "setChargingLimit",          AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_chargingSetLimitAction_tag,             GetOnSet::GetChargeState,         0},
+            {BLE_CarServer_VehicleAction::SET_SENTRY_SWITCH,                "setSentrySwitch",           AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_vehicleControlSetSentryModeAction_tag,  GetOnSet::Invalid,                0},
+            {BLE_CarServer_VehicleAction::SET_HVAC_SWITCH,                  "setHVACSwitch",             AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_hvacAutoAction_tag,                     GetOnSet::GetClimateState,        0},
+            {BLE_CarServer_VehicleAction::SET_HVAC_STEERING_HEATER_SWITCH,  "setHVACSteeringHeatSwitch", AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_hvacSteeringWheelHeaterAction_tag,      GetOnSet::Invalid,                0},
+            {BLE_CarServer_VehicleAction::SET_OPEN_CHARGE_PORT_DOOR,        "setOpenChargePortDoor",     AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_chargePortDoorOpen_tag,                 GetOnSet::Invalid,                0},
+            {BLE_CarServer_VehicleAction::SET_CLOSE_CHARGE_PORT_DOOR,       "setCloseChargePortDoor",    AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_chargePortDoorClose_tag,                GetOnSet::Invalid,                0},
+            {BLE_CarServer_VehicleAction::SOUND_HORN,                       "soundHorn",                 AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_vehicleControlHonkHornAction_tag,       GetOnSet::Invalid,                0},
+            {BLE_CarServer_VehicleAction::FLASH_LIGHT,                      "flashLight",                AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_vehicleControlFlashLightsAction_tag,    GetOnSet::Invalid,                0},
+            {BLE_CarServer_VehicleAction::SET_WINDOWS_SWITCH,               "setWindowsSwitch",          AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_vehicleControlWindowAction_tag,         GetOnSet::GetClosureState,        0},
+            {BLE_CarServer_VehicleAction::DEFROST_CAR,                      "defrostCar",                AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_hvacSetPreconditioningMaxAction_tag,    GetOnSet::GetClimateState,        0},
+            {BLE_CarServer_VehicleAction::SET_CLIMATE_TEMP,                 "setClimateTemp",            AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_hvacTemperatureAdjustmentAction_tag,    GetOnSet::GetClimateState,        0},
+            {BLE_CarServer_VehicleAction::MEDIA_PLAY,                       "mediaPlay",                 AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_mediaPlayAction_tag,                    GetOnSet::Invalid,                0},
+            {BLE_CarServer_VehicleAction::MEDIA_NEXT_TRACK,                 "mediaNextTrack",            AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_mediaNextTrack_tag,                     GetOnSet::Invalid,                0},
+            {BLE_CarServer_VehicleAction::MEDIA_PREVIOUS_TRACK,             "mediaPreviousTrack",        AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_mediaPreviousTrack_tag,                 GetOnSet::Invalid,                0},
+            {BLE_CarServer_VehicleAction::SET_LOW_POWER_MODE_SWITCH,        "setLowPowerModeSwitch",     AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_setLowPowerModeAction_tag,              GetOnSet::Invalid,                0},
+            {BLE_CarServer_VehicleAction::SET_KEEP_ACCESSORY_SWITCH,        "setKeepAccessorySwitch",    AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_setKeepAccessoryPowerModeAction_tag,  	GetOnSet::Invalid,                0},
+            {BLE_CarServer_VehicleAction::GET_CHARGE_SCHEDULE_STATE,        "getChargeScheduleState",    AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getChargeScheduleState_tag,          	GetOnSet::Invalid,                0},
+            {BLE_CarServer_VehicleAction::DEL_CHARGING_SCHEDULE,            "delChargingSchedule",       AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_removeChargeScheduleAction_tag,         GetOnSet::GetChargeScheduleState, 0},
         }};
         static_assert(ACTION_SPECIFICS.size() == static_cast<std::size_t>(BLE_CarServer_VehicleAction::_COUNT), "ACTION_SPECIFICS out of sync with enum");
         static const char *const TAG = "tesla_ble_vehicle";
@@ -263,7 +270,8 @@ namespace esphome
         };
 
         class TeslaBLEVehicle : public PollingComponent,
-                                public ble_client::BLEClientNode
+                                public ble_client::BLEClientNode,
+                                public esphome::api::CustomAPIDevice
         {
         public:
             int post_wake_poll_time_;
@@ -323,27 +331,30 @@ namespace esphome
     
             int sendVCSECActionMessage(VCSEC_RKEAction_E action);
             int sendVCSECClosureMoveRequestMessage (int moveWhat, VCSEC_ClosureMoveType_E moveType);
-            int sendCarServerVehicleActionMessage(BLE_CarServer_VehicleAction action, int param);
+            int sendCarServerVehicleActionMessage(BLE_CarServer_VehicleAction action, int param, uint64_t long_param = 0);
             int sendSessionInfoRequest(UniversalMessage_Domain domain);
             int sendVCSECInformationRequest(void);
             void enqueueVCSECInformationRequest(bool force = false);
             int wake_on_boot_ = 0; // != 0 wakes car on device boot
 
-            int writeBLE(const unsigned char *message_buffer, size_t message_length,
-                         esp_gatt_write_type_t write_type, esp_gatt_auth_req_t auth_req);
-    inline void pop_command_and_tidy_up ()
-    /*
-    *   Processing of the current command has completed (including it failing). It needs to be popped off the queue
-    *   and any other tidying up carried out (eg emptying the read and response queues).
-    */
-    {
-      command_queue_.pop();
-      ble_read_buffer_.clear();         // Clear anything that's been received and not processed
-      if (!response_queue_.empty())           // Empty the response queue if there's anything in it
-      {
-        response_queue_.pop();
-      }
-    }
+            int writeBLE(const unsigned char *message_buffer, size_t message_length, esp_gatt_write_type_t write_type, esp_gatt_auth_req_t auth_req);
+            inline void pop_command_and_tidy_up ()
+            /*
+            *   Processing of the current command has completed (including it failing). It needs to be popped off the queue
+            *   and any other tidying up carried out (eg emptying the read and response queues).
+            */
+            {
+                command_queue_.pop();
+                ble_read_buffer_.clear();               // Clear anything that's been received and not processed
+                if (!response_queue_.empty())           // Empty the response queue if there's anything in it
+                {
+                    response_queue_.pop();
+                }
+            }
+            inline pb_size_t get_charging_state_raw () const
+            {
+                return charging_state_raw_;
+            }
             inline const ActionMessageDetail& get_action_detail (BLE_CarServer_VehicleAction action)
             { // Get the entry in the ACTION_SPECIFICS table corresponding to the action (we can't be sure of the order)
                 return ACTION_SPECIFICS[static_cast<size_t>(action)];
@@ -382,6 +393,12 @@ namespace esphome
             }
             void set_numeric_sensor (NumericSensorId id, sensor::Sensor* s) {
                 numeric_sensors_[static_cast<size_t>(id)] = s;
+            }
+            void set_charger_switch(switch_::Switch *sw) {
+                charger_switch_ = sw;
+            }
+            void set_defrost_switch(switch_::Switch *sw) {
+                defrost_switch_ = sw;
             }
             inline static constexpr std::pair<int, const char*> SHIFT_MAP[] = {
                 {CarServer_ShiftState_Invalid_tag,  "Invalid"},
@@ -448,6 +465,21 @@ namespace esphome
                 }
                 return "Charge port latch state look up error";
             }
+            std::string days_to_string (int32_t days)
+            {
+                static const char *const names[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+                std::string result;
+                for (int i = 0; i < 7; i++)
+                {
+                    if (days & (1 << i))
+                    {
+                        if (!result.empty())
+                            result += ", ";
+                        result += names[i];
+                    }
+                }
+                return result;
+            }
 
         protected:
             std::queue<BLERXChunk> ble_read_queue_;
@@ -460,6 +492,8 @@ namespace esphome
             uint16_t handle_;
             uint16_t read_handle_{0};
             uint16_t write_handle_{0};
+            pb_size_t charging_state_raw_ {CarServer_ChargeState_ChargingState_Unknown_tag}; // We need the raw state as the text could be translated
+            std::string schedules_json_;
 
             espbt::ESPBTUUID service_uuid_;
             espbt::ESPBTUUID read_uuid_;
@@ -472,6 +506,8 @@ namespace esphome
 
             std::array<sensor::Sensor*, static_cast<size_t>(NumericSensorId::Count)> numeric_sensors_{};
 
+            switch_::Switch *charger_switch_{nullptr};
+            switch_::Switch *defrost_switch_{nullptr};
             std::vector<unsigned char> ble_read_buffer_;
 
             void initializeFlash();

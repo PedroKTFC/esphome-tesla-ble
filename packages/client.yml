@@ -1,7 +1,6 @@
 substitutions:
   tesla_vin: ""
   ble_mac_address: "00:00:00:00:00:00"
-  charging_amps_max: "32"
 
 esphome:
   on_boot:
@@ -59,6 +58,8 @@ tesla_ble_vehicle:
   ble_client_id: ble_tesla_id
   id: tesla_ble_vehicle_id
   vin: $tesla_vin
+  charger_switch: sw_charger
+  defrost_switch: sw_defrost_car
   update_interval: 10s # default
   post_wake_poll_time: 300 # How long to poll for data after car awakes (s)
   poll_data_period: 60 # Normal period when polling for data when not asleep (s)
@@ -258,6 +259,14 @@ button:
     disabled_by_default: true
 
   - platform: template
+    id: btn_get_charge_schedule_state
+    name: Get charge schedules
+    icon: mdi:download-multiple
+    on_press:
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::GET_CHARGE_SCHEDULE_STATE, 0);
+    disabled_by_default: true
+
+  - platform: template
     id: btn_regenerate_key
     name: Regenerate key
     icon: mdi:key-change
@@ -290,7 +299,6 @@ switch:
     name: "Charger"
     optimistic: true
     icon: mdi:lightning-bolt
-#    restore_mode: RESTORE_DEFAULT_OFF
     lambda: |-
       if ((id(charging_state).state == "Charging") or (id(charging_state).state == "Starting") or (id(charging_state).state == "Calibrating")) {
         return true;
@@ -299,10 +307,10 @@ switch:
       }
     turn_on_action:
       - lambda: |-
-          if (id(max_soc).state > id(charge_state).state) { // Only allow charging if max allowed above current charge level
+          if (id(tesla_ble_vehicle_id).get_charging_state_raw() != CarServer_ChargeState_ChargingState_Complete_tag) { // Don't allow charging if last session has completed and no more configured
             id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_CHARGING_SWITCH, 1);
           } else {
-            ESP_LOGI (esphome::tesla_ble_vehicle::TAG, "Charge request rejected as charge limit %.1f <= charge level %.1f", id(max_soc).state, id(charge_state).state);
+            ESP_LOGI (esphome::tesla_ble_vehicle::TAG, "Charge request rejected as last session has completed. Reset to enable charging, eg raise the soc limit");
           }
     turn_off_action: 
       - lambda: |-
@@ -665,3 +673,21 @@ number:
     on_value:
       - lambda: |-
           id(tesla_ble_vehicle_id)->ble_disconnected_min_time_ = x * 1000;
+
+text:
+  - platform: template
+    name: "Delete a charging schedule"
+    id: del_charging_schedule
+    icon: mdi:delete-clock
+    mode: text
+    update_interval: 2s
+    set_action:
+      - lambda: |-
+          uint64_t id = strtoull(x.c_str(), nullptr, 10);
+          if (id == 0)
+          {
+            ESP_LOGW("client.yml", "Invalid charging schedule ID %s, schedule delete not sent", x.c_str());
+            return;
+          }
+          id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::DEL_CHARGING_SCHEDULE, 0, id);
+    disabled_by_default: true

@@ -20,6 +20,11 @@ tesla_ble_vehicle:
     name: "Fahrstufe"
   defrost_state:
     name: "Enteisung"
+    filters:
+      - substitute:
+          - "Off -> Aus"
+          - "Normal -> Normal"
+          - "Max -> Maximal"
   charge_state:
     name: "Ladezustand"
   odometer:
@@ -53,6 +58,15 @@ tesla_ble_vehicle:
     unit_of_measurement: km
   charging_state:
     name: "Ladezustand"
+    filters:
+      - substitute:
+          - "Disconnected -> Getrennt"
+          - "Engaged -> Angeschlossen"
+          - "Charging -> Lädt"
+          - "Starting -> Startet"
+          - "Complete -> Fertig"
+          - "Stopped -> Gestoppt"
+          - "No Power -> Kein Strom"
   charge_port_latch_state:
     name: "Verriegelung Ladeanschluss"
     filters:
