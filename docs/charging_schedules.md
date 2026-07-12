@@ -4,14 +4,14 @@ This project allows you to **view** and **delete** Tesla charging schedules. Unl
 ### Key features
 
 - Charging schedules are returned to Home Assistant as an **event**, rather than a sensor. This is because a single schedule list can exceed the 255-character limit of an ESPHome text sensor. The event data can then be captured into a Home Assistant entity (this guide demonstrates capturing it in a number sensor).
-- Charging schedules are retrieved **on demand** by pressing the **Get charge schedules button**.
+- Charging schedules are retrieved **on demand** by pressing the **Get charge schedules button**. Note the car must be awake.
 - Individual charging schedules can be deleted by specifying the schedule's **ID** using the **Delete a charging schedule** control.
 - All charging schedule controls are **disabled by default**.
 
 Thanks to [iancg](https://github.com/iancg) for suggesting the use of templating to extract event data into a sensor's attributes and for the markdown cardapproach  to display the schedules, which I've shamelessly plagiarised!
 
 ### Reading charging schedules
-All charging schedules stored in the car are retrieved in a single request and returned to HA as JSON via the **esphome.tesla_schedules_updated** event. The event is fired on demand by "pressing" the **Get charge schedules** button (disabled by default). The event includes the following data fields:
+To read the charging schedules the car must be awake. The charging schedules stored in the car are retrieved in a single request and returned to HA as JSON via the **esphome.tesla_schedules_updated** event. The event is fired on demand by "pressing" the **Get charge schedules** button (disabled by default). The event includes the following data fields:
 
 | Field | Description |
 | --- | --- |
@@ -70,4 +70,4 @@ This produces the following display:
 <img width=50%  alt="image" src="https://github.com/user-attachments/assets/4045d442-0f4a-459b-9cff-71fe3ba08241" />
 
 ### Deleting a charging schedule
-The **Delete a charging schedule** control (disabled by default) allows you to remove an individual charging schedule. Enter the **ID** of the schedule you wish to delete and submit the request. Once the schedule has been deleted, the list of charging schedules is automatically refreshed.
+The **Delete a charging schedule** control (disabled by default) allows you to remove an individual charging schedule. Enter the **ID** of the schedule you wish to delete and submit the request. Once the schedule has been deleted, the list of charging schedules is automatically refreshed. Note this control wakes the car if it is asleep.
