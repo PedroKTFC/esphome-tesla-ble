@@ -2008,7 +2008,6 @@ namespace esphome
           else if (carserver_response.response_msg.vehicleData.has_charge_schedule_state)
           {
             auto& charge_schedule_state_ = carserver_response.response_msg.vehicleData.charge_schedule_state;
-            ESP_LOGW (TAG, "%i charge schedules found.", charge_schedule_state_.charge_schedules_count);
             schedules_json_.clear();
             schedules_json_ = "{\"charge_schedules\": [";
             char hhmm_[8];
