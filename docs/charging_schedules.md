@@ -1,37 +1,49 @@
 ## Charging schedules
-It is possible to view and delete charging schedules with this project. Charging schedules are handled a little differently to the other sensors and controls and
-require a little more expertise in Home Assistant (HA). Many users will not be interested in using this aspect of the project hence they are documented separately.
-Key features include:
+This project allows you to **view** and **delete** Tesla charging schedules. Unlike the other sensors and controls, charging schedules are handled differently and require some familiarity with Home Assistant (HA). Since many users will not need this functionality, it is documented separately.
 
-- As there can be many charging schedules, they are returned to HA through an event, not a sensor (the largest string that can be transferred from ESPHome to an HA
-text sensor is 255 characters). The event data needs to be captured into an HA entity where it can be used (in this document capture to a text sensor is described)
-- The data is only captured on demand through a button control.
-- An individual charging schedule can be deleted using a number control by specifying the charging schedule's ID.
+### Key features
 
-All controls are disabled by default.
+- Charging schedules are returned to Home Assistant as an **event**, rather than a sensor. This is because a single schedule list can exceed the 255-character limit of an ESPHome text sensor. The event data can then be captured into a Home Assistant entity (this guide demonstrates capturing it in a number sensor).
+- Charging schedules are retrieved **on demand** by pressing the **Get charge schedules button**.
+- Individual charging schedules can be deleted by specifying the schedule's **ID** using the **Delete a charging schedule** control.
+- All charging schedule controls are **disabled by default**.
 
-My thanks to [iancg](https://github.com/iancg) for his input in using templating to extract the data from the event into a sensor's attributes and the use of the markdown card to display the schedules which I've shamelessly plagiarised!
+Thanks to [iancg](https://github.com/iancg) for suggesting the use of templating to extract event data into a sensor's attributes and for the markdown cardapproach  to display the schedules, which I've shamelessly plagiarised!
 
-# Reading the charging schedules
-All the charging schedules in the car are read in one go and returned to HA as JSON data through the event **esphome.tesla_schedules_updated**. The event is fired on demand by "pressing" the button **Get charge schedules** (which is disabled by default). The event includes the following data fields (for the complete and up to date view, use the `developer tools` in HA to see the contents of the event):
+### Reading charging schedules
+All charging schedules stored in the car are retrieved in a single request and returned to HA as JSON via the **esphome.tesla_schedules_updated** event. The event is fired on demand by "pressing" the **Get charge schedules** button (disabled by default). The event includes the following data fields:
 
 | Field | Description |
 | --- | --- |
-| comment | Some helpful text, at the time of writing: *Fields starting with * are derived* |
-| count | The number of schedules returned |
-| schedules | The actual schedules in JSON format |
-| version | To track the code version |
+| comment | Informational text. At the time of writing, it notes that fields beginning with * are derived values. |
+| count | Number of charging schedules returned. |
+| schedules | Charging schedule data in JSON format. |
+| version | Project version information. |
 
-There is a one-to-one correspondence between the JSON fields in the schedules and the data from the car except for those that start with a * which are derived (for example, *days* is a bitfield whereas **days* is a human readable version decoded from the bitfield). 
+Most JSON fields map directly to the data returned by the car. Fields beginning with `*` are derived for convenience. For example, `days` is stored as a bitfield, while `*days` contains a human-readable representation of the selected days.
 
-# Using and displaying charging schedules in Home Assistant
-Probably the easiest way to use charging schedules in HA is to read them into the attributes of a dedicated sensor, where they can then be displayed and read in, for example, automations.
+For the most up-to-date event format, use the **Developer Tools → Events** page in HA to inspect the `esphome.tesla_schedules_updated` event.
 
-## Reading the event data into a sensor
-The following yaml, when added to your configuration.yaml, will cause the sensor `Charging schedules` to be updated whenever the **esphome.tesla_schedules_updated** event fires. The value of the sensor is the number of charging schedules and the JSON data is decoded into the attributes of the sensor.
+### Using and displaying charging schedules in Home Assistant
+A convenient way to work with charging schedules in Home Assistant is to capture the event data into the attributes of a dedicated sensor. The schedule data can then be used in dashboards, templates, scripts, and automations.
 
-## Displaying the charging schedules
-There are many ways of displaying the charging schedules. This section describes one approach which also shows how to access the charging schedules in the sensor attributes. Using a `markup card`, each charging schedule can be displayed as desired. The following is an example:
+#### Capturing the event data into a sensor
+Adding the following YAML to your `configuration.yaml` updates the **Charging schedules** sensor whenever the `esphome.tesla_schedules_updated` event is received.
+```
+template:
+  - trigger:
+      - platform: event
+        event_type: esphome.tesla_schedules_updated
+    sensor:
+      - name: "Charging schedules"
+        state: "{{ trigger.event.data.count }}"
+        attributes:
+          charge_schedules: "{{ (trigger.event.data.schedules | from_json).charge_schedules }}"
+```
+The sensor's state is set to the number of schedules returned, while the decoded JSON data is stored in the sensor's attributes.
+
+#### Displaying charging schedules
+Charging schedules can be displayed in many ways. One simple approach is to use a **Markdown card** which reads the schedule information directly from the sensor attributes. The example below displays the number of schedules together with a table showing each schedule's ID, days, start and end times, location, enabled status, one-time status, and name.
 ```
 type: markdown
 content: >
@@ -53,7 +65,9 @@ content: >
   {% else %} |0| No schedules found | | | | | {%-endif %}
 title: Scheduled Charges
 ```
-Which produces the following display:
+This produces the following display:
 
-<img width="792" height="252" alt="image" src="https://github.com/user-attachments/assets/4045d442-0f4a-459b-9cff-71fe3ba08241" />
+<img width=50%  alt="image" src="https://github.com/user-attachments/assets/4045d442-0f4a-459b-9cff-71fe3ba08241" />
 
+### Deleting a charging schedule
+The **Delete a charging schedule** control (disabled by default) allows you to remove an individual charging schedule. Enter the **ID** of the schedule you wish to delete and submit the request. Once the schedule has been deleted, the list of charging schedules is automatically refreshed.
