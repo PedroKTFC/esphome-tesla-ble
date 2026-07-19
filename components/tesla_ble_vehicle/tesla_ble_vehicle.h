@@ -293,6 +293,7 @@ namespace esphome
             int number_updates_since_connection_ = 0;
             UniversalMessage_RoutableMessage read_queue_message_;
             CarServer_Response static_carserver_response_;
+            CarServer_ClimateState_CabinOverheatProtection_E cabin_overheat_protection_;
             unsigned char static_message_buffer_[UniversalMessage_RoutableMessage_size];
             //BLETXChunk static_tx_chunk_;
             //BLERXChunk static_rx_chunk_;
