@@ -691,3 +691,27 @@ text:
           }
           id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::DEL_CHARGING_SCHEDULE, 0, id);
     disabled_by_default: true
+
+select:
+  - platform: template
+    name: "Cabin overheat protection"
+    id: cabin_overheat_protection
+    icon: mdi:heat-wave
+    options:
+      - "Off"
+      - "On"
+      - "Fan"
+    update_interval: 5s
+    set_action:
+      - lambda: |-
+          id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::GET_CLIMATE_STATE, 0);
+          ESP_LOGW("*** TEMP *** Action is: %s", x.c_str());
+    lambda: |-
+      switch (id(tesla_ble_vehicle_id)->cabin_overheat_protection_)
+      {
+        case CarServer_ClimateState_CabinOverheatProtection_E_CabinOverheatProtectionOff:     return "Off";
+        case CarServer_ClimateState_CabinOverheatProtection_E_CabinOverheatProtectionOn:      return "On";
+        case CarServer_ClimateState_CabinOverheatProtection_E_CabinOverheatProtectionFanOnly: return "Fan";
+        default: return "Unknown";
+      }
+    disabled_by_default: true
