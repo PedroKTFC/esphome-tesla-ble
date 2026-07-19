@@ -1949,6 +1949,18 @@ namespace esphome
             {
               ESP_LOGI (TAG, "No data to set defrost mode");
             }
+
+            if (carserver_response.response_msg.vehicleData.climate_state.which_optional_cabin_overheat_protection)
+            {
+cabin_overheat_protection_ = carserver_response.response_msg.vehicleData.climate_state.optional_cabin_overheat_protection.cabin_overheat_protection;
+ESP_LOGW (TAG, "Overheat is: %i", carserver_response.response_msg.vehicleData.climate_state.optional_cabin_overheat_protection.cabin_overheat_protection);
+//              publishSensor (BinarySensorId::IsClimateOn, carserver_response.response_msg.vehicleData.climate_state.optional_is_climate_on.is_climate_on);
+            }
+              else
+            {
+              ESP_LOGI (TAG, "No data to set cabin overheat status");
+            }
+
             publishSensor (TextSensorId::LastUpdate, ctime(&timestamp));
           }
           else if (carserver_response.response_msg.vehicleData.has_closures_state)
