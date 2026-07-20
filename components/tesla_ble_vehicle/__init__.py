@@ -1,6 +1,6 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import ble_client, binary_sensor, text_sensor, sensor, switch
+from esphome.components import ble_client, binary_sensor, text_sensor, sensor, switch, select
 from esphome.const import CONF_ID, STATE_CLASS_MEASUREMENT
 from enum import Enum, auto
 from dataclasses import dataclass
@@ -37,15 +37,16 @@ def text(id, **schema):          return SensorSpec(SensorTypes.TEXT, id, schema)
 
 # Constants
 CONF_VIN = "vin"
-CONF_POST_WAKE_POLL_TIME = "post_wake_poll_time" # How long to poll for data after car awakes (s)
-CONF_POLL_DATA_PERIOD = "poll_data_period" # Normal period when polling for data when not asleep (s)
-CONF_POLL_ASLEEP_PERIOD = "poll_asleep_period" # Period to poll for data when asleep (s)
-CONF_POLL_CHARGING_PERIOD = "poll_charging_period" # Period to poll for data when charging (s)
-CONF_BLE_DISCONNECTED_MIN_TIME = "ble_disconnected_min_time" # Minimum time BLE must be disconnected before sensors are Unknown (s)
-CONF_FAST_POLL_IF_UNLOCKED = "fast_poll_if_unlocked" # if != 0, fast polls are enabled when unlocked
-CONF_WAKE_ON_BOOT = "wake_on_boot" # != 0 wakes car on device boot
-CONF_CHARGER_SWITCH = "charger_switch"
-CONF_DEFROST_SWITCH = "defrost_switch"
+CONF_POST_WAKE_POLL_TIME        = "post_wake_poll_time" # How long to poll for data after car awakes (s)
+CONF_POLL_DATA_PERIOD           = "poll_data_period" # Normal period when polling for data when not asleep (s)
+CONF_POLL_ASLEEP_PERIOD         = "poll_asleep_period" # Period to poll for data when asleep (s)
+CONF_POLL_CHARGING_PERIOD       = "poll_charging_period" # Period to poll for data when charging (s)
+CONF_BLE_DISCONNECTED_MIN_TIME  = "ble_disconnected_min_time" # Minimum time BLE must be disconnected before sensors are Unknown (s)
+CONF_FAST_POLL_IF_UNLOCKED      = "fast_poll_if_unlocked" # if != 0, fast polls are enabled when unlocked
+CONF_WAKE_ON_BOOT               = "wake_on_boot" # != 0 wakes car on device boot
+CONF_CHARGER_SWITCH             = "charger_switch"
+CONF_DEFROST_SWITCH             = "defrost_switch"
+CONF_CABIN_OVERHEAT_PROTECTION  = "cabin_overheat_protection"
 
 SENSORS = {
     "is_asleep": binary (BinarySensorId.IsAsleep,
@@ -147,10 +148,12 @@ schema_dict = {
     cv.Optional(CONF_BLE_DISCONNECTED_MIN_TIME): cv.uint16_t,
     cv.Optional(CONF_FAST_POLL_IF_UNLOCKED): cv.uint16_t,
     cv.Optional(CONF_WAKE_ON_BOOT): cv.uint16_t,
+#    cv.Optional(CONF_CABIN_OVERHEAT_PROTECTION): select.select_schema(class_="CabinOverheatSelect", icon="mdi:heat-wave"),
 }
 
 schema_dict[cv.Optional(CONF_CHARGER_SWITCH)] = cv.use_id(switch.Switch)
 schema_dict[cv.Optional(CONF_DEFROST_SWITCH)] = cv.use_id(switch.Switch)
+schema_dict[cv.Optional(CONF_CABIN_OVERHEAT_PROTECTION)] = cv.use_id(select.Select)
 
 for key, spec in SENSORS.items():
     builder = SENSOR_TYPES_INFO[spec.type]["schema"]
@@ -187,7 +190,10 @@ async def to_code(config):
     if CONF_DEFROST_SWITCH in config:
         sw = await cg.get_variable(config[CONF_DEFROST_SWITCH])
         cg.add(var.set_defrost_switch(sw))
-
+    if CONF_CABIN_OVERHEAT_PROTECTION in config:
+        sel = await cg.get_variable(config[CONF_CABIN_OVERHEAT_PROTECTION])
+        cg.add(var.set_cabin_overheat_select(sel))
+        
     # 🔁 Auto-register all sensors
     for key, spec in SENSORS.items():
         if key not in config:
