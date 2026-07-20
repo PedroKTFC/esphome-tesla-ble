@@ -60,6 +60,7 @@ tesla_ble_vehicle:
   vin: $tesla_vin
   charger_switch: sw_charger
   defrost_switch: sw_defrost_car
+  cabin_overheat_protection: sel_cabin_overheat_protection
   update_interval: 10s # default
   post_wake_poll_time: 300 # How long to poll for data after car awakes (s)
   poll_data_period: 60 # Normal period when polling for data when not asleep (s)
@@ -695,23 +696,29 @@ text:
 select:
   - platform: template
     name: "Cabin overheat protection"
-    id: cabin_overheat_protection
+    id: sel_cabin_overheat_protection
     icon: mdi:heat-wave
     options:
       - "Off"
       - "On"
       - "Fan"
-    update_interval: 5s
+      - "Unknown"
+    initial_option: "Unknown"
     set_action:
       - lambda: |-
-          id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::GET_CLIMATE_STATE, 0);
-          ESP_LOGW("*** TEMP *** Action is: %s", x.c_str());
-    lambda: |-
-      switch (id(tesla_ble_vehicle_id)->cabin_overheat_protection_)
-      {
-        case CarServer_ClimateState_CabinOverheatProtection_E_CabinOverheatProtectionOff:     return "Off";
-        case CarServer_ClimateState_CabinOverheatProtection_E_CabinOverheatProtectionOn:      return "On";
-        case CarServer_ClimateState_CabinOverheatProtection_E_CabinOverheatProtectionFanOnly: return "Fan";
-        default: return "Unknown";
-      }
+          int param = 0;
+          if (x.c_str() != "Unknown")
+          {
+            //if (x == "Off") // do nothing as param = 0
+            if (x.c_str() == "On")
+            {
+              param = CarServer_SetCabinOverheatProtectionAction_on_tag;
+            }
+            else if (x.c_str() == "Fan")
+            {
+              param = CarServer_SetCabinOverheatProtectionAction_fan_only_tag;
+            }
+            id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_CABIN_OVERHEAT_PROTECTION, param);
+            id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::GET_CLIMATE_STATE, 0);
+          }
     disabled_by_default: true
