@@ -33,7 +33,6 @@ namespace TeslaBLE
 
 namespace esphome
 {
-
     namespace tesla_ble_vehicle
     {
         namespace espbt = esphome::esp32_ble_tracker;
@@ -67,6 +66,7 @@ namespace esphome
             SET_KEEP_ACCESSORY_SWITCH,
             GET_CHARGE_SCHEDULE_STATE,
             DEL_CHARGING_SCHEDULE,
+            SET_CABIN_OVERHEAT_PROTECTION,
             _COUNT  // sentinel value to get count of entries
         };
         enum class AllowedMsg // The type of messages to send
@@ -105,7 +105,7 @@ namespace esphome
             GetOnSet getOnSet;
             int numberUpdatesBetweenGets; // Only used for GetVehicleDataMessage
         };
-        static constexpr std::array<ActionMessageDetail, 27> ACTION_SPECIFICS // Don't forget to increase the size when adding a row
+        static constexpr std::array<ActionMessageDetail, 28> ACTION_SPECIFICS // Don't forget to increase the size when adding a row
         {{
             {BLE_CarServer_VehicleAction::DO_NOTHING,                       "",                          AllowedMsg::Empty,                 0,                                                              GetOnSet::Invalid,                0},
             {BLE_CarServer_VehicleAction::GET_CHARGE_STATE,                 "getChargeState",            AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getChargeState_tag,                    GetOnSet::Invalid,                1},
@@ -134,6 +134,7 @@ namespace esphome
             {BLE_CarServer_VehicleAction::SET_KEEP_ACCESSORY_SWITCH,        "setKeepAccessorySwitch",    AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_setKeepAccessoryPowerModeAction_tag,  	GetOnSet::Invalid,                0},
             {BLE_CarServer_VehicleAction::GET_CHARGE_SCHEDULE_STATE,        "getChargeScheduleState",    AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getChargeScheduleState_tag,          	GetOnSet::Invalid,                0},
             {BLE_CarServer_VehicleAction::DEL_CHARGING_SCHEDULE,            "delChargingSchedule",       AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_removeChargeScheduleAction_tag,         GetOnSet::GetChargeScheduleState, 0},
+            {BLE_CarServer_VehicleAction::SET_CABIN_OVERHEAT_PROTECTION,    "setCabinOverheatProtection",AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_setCabinOverheatProtectionAction_tag,   GetOnSet::Invalid,                0},
         }};
         static_assert(ACTION_SPECIFICS.size() == static_cast<std::size_t>(BLE_CarServer_VehicleAction::_COUNT), "ACTION_SPECIFICS out of sync with enum");
         static const char *const TAG = "tesla_ble_vehicle";
@@ -293,7 +294,6 @@ namespace esphome
             int number_updates_since_connection_ = 0;
             UniversalMessage_RoutableMessage read_queue_message_;
             CarServer_Response static_carserver_response_;
-            CarServer_ClimateState_CabinOverheatProtection_E cabin_overheat_protection_;
             unsigned char static_message_buffer_[UniversalMessage_RoutableMessage_size];
             //BLETXChunk static_tx_chunk_;
             //BLERXChunk static_rx_chunk_;
@@ -362,7 +362,7 @@ namespace esphome
             }
             // sensors
             // set sensors to unknown (e.g. when vehicle is disconnected)
-            void setSensors(bool has_state) // has_state is an anachronism
+            void setUnknown (bool has_state) // has_state is an anachronism
             {
                 for (auto* s : numeric_sensors_)
                     if (s) s->publish_state(NAN);
@@ -370,6 +370,7 @@ namespace esphome
                     if (s) s->publish_state("Unknown");
                 for (auto* s : binary_sensors_)
                     if (s) s->invalidate_state();
+                cabin_overheat_select_->publish_state("Unknown");
             }
             template<typename T, typename V>
             inline void publish_if (T* sensor, const V& value) {
@@ -395,11 +396,14 @@ namespace esphome
             void set_numeric_sensor (NumericSensorId id, sensor::Sensor* s) {
                 numeric_sensors_[static_cast<size_t>(id)] = s;
             }
-            void set_charger_switch(switch_::Switch *sw) {
+            void set_charger_switch (switch_::Switch *sw) {
                 charger_switch_ = sw;
             }
-            void set_defrost_switch(switch_::Switch *sw) {
+            void set_defrost_switch (switch_::Switch *sw) {
                 defrost_switch_ = sw;
+            }
+            void set_cabin_overheat_select (select::Select *sel) {
+                cabin_overheat_select_ = sel;
             }
             inline static constexpr std::pair<int, const char*> SHIFT_MAP[] = {
                 {CarServer_ShiftState_Invalid_tag,  "Invalid"},
@@ -509,6 +513,7 @@ namespace esphome
 
             switch_::Switch *charger_switch_{nullptr};
             switch_::Switch *defrost_switch_{nullptr};
+            select::Select  *cabin_overheat_select_{nullptr};
             std::vector<unsigned char> ble_read_buffer_;
 
             void initializeFlash();
