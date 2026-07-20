@@ -927,7 +927,7 @@ namespace esphome
       { // Only delay setting to Unknown if not zero
         if ((ble_disconnected_ == BleDisconnected) and ((millis() - ble_disconnected_time_) > ble_disconnected_min_time_))
         { // Only make sensors Unknown if ble disconnected continuously for the configured time
-          this->setSensors(false);
+          this->setUnknown (false);
           ble_disconnected_ = BleDisconnectedUnknownsSet;
         }
       }
@@ -1862,7 +1862,8 @@ namespace esphome
               charging_state_raw_ = carserver_response.response_msg.vehicleData.charge_state.charging_state.which_type;
               std::string charging_state_text = lookup_charging_state (carserver_response.response_msg.vehicleData.charge_state.charging_state.which_type);
               publishSensor (TextSensorId::ChargingState, charging_state_text.c_str());
-              if (charger_switch_ != nullptr) {
+              if (charger_switch_ != nullptr)
+              {
                 charger_switch_->publish_state ((charging_state_text == "Charging") or (charging_state_text == "Starting") or (charging_state_text == "Calibrating"));
               }
             }
@@ -1952,9 +1953,21 @@ namespace esphome
 
             if (carserver_response.response_msg.vehicleData.climate_state.which_optional_cabin_overheat_protection)
             {
-cabin_overheat_protection_ = carserver_response.response_msg.vehicleData.climate_state.optional_cabin_overheat_protection.cabin_overheat_protection;
-ESP_LOGW (TAG, "Overheat is: %i", carserver_response.response_msg.vehicleData.climate_state.optional_cabin_overheat_protection.cabin_overheat_protection);
-//              publishSensor (BinarySensorId::IsClimateOn, carserver_response.response_msg.vehicleData.climate_state.optional_is_climate_on.is_climate_on);
+              CarServer_ClimateState_CabinOverheatProtection_E cabin_overheat_protection_ = carserver_response.response_msg.vehicleData.climate_state.optional_cabin_overheat_protection.cabin_overheat_protection;
+              switch (cabin_overheat_protection_)
+              {
+                case CarServer_ClimateState_CabinOverheatProtection_E_CabinOverheatProtectionOff:
+                  cabin_overheat_select_->publish_state("Off");
+                  break;
+                case CarServer_ClimateState_CabinOverheatProtection_E_CabinOverheatProtectionOn:
+                  cabin_overheat_select_->publish_state("On");
+                  break;
+                case CarServer_ClimateState_CabinOverheatProtection_E_CabinOverheatProtectionFanOnly:
+                  cabin_overheat_select_->publish_state("Fan");
+                  break;
+                default:
+                  cabin_overheat_select_->publish_state("Unknown");
+              }
             }
               else
             {
@@ -2201,7 +2214,7 @@ ESP_LOGW (TAG, "Overheat is: %i", carserver_response.response_msg.vehicleData.cl
         // set binary sensors to unknown
         if (ble_disconnected_min_time_ == 0)
         { // If delay time zero, then set Unknown on any disconnect however fleeting
-            this->setSensors(false);
+            this->setUnknown (false);
             ble_disconnected_ = BleDisconnectedUnknownsSet;
         }
         ble_disconnected_time_ = millis();
