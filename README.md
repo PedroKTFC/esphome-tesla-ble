@@ -60,6 +60,8 @@ These are implemented as switches, covers, buttons or numbers. Where indicated, 
 - Media next track (button). This is disabled by default.
 - Media previous track (button). This is disabled by default.
 - Media play/plause (button). This is disabled by default.
+- Low power mode (switch). This is disabled by default. Note the status is not reported by the car so its status is not reliable. Switching it On or Off will nevertheless cause the request to be sent to the car.
+- Keep accessory power on (switch). This is disabled by default. Note the status is not reported by the car so its status is not reliable. Switching it On or Off will nevertheless cause the request to be sent to the car.
 
 ### Vehicle Information Sensors
 
