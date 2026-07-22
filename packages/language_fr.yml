@@ -1,0 +1,183 @@
+# including this file will regionalize the entities to French:
+# - localize all names to French terminology
+# - use km. instead of mi for distance units by default
+
+tesla_ble_vehicle:
+  is_asleep:
+    name: "En veille"
+  is_user_present:
+    name: "Personne détectée"
+  is_unlocked:
+    name: "Déverrouillée"
+  is_charge_flap_open:
+    icon: mdi:ev-plug-ccs2
+    name: "Trappe de charge"
+  is_boot_open:
+    name: "Coffre arrière"
+  is_frunk_open:
+    name: "Coffre avant (Frunk)"
+  shift_state:
+    name: "Vitesse enclenchée"
+  defrost_state:
+    name: "Dégivrage"
+    filters:
+      - substitute:
+          - "Off -> Éteint"
+          - "Normal -> Normal"
+          - "Max -> Maximal"
+  charge_state:
+    name: "État de charge"
+  odometer:
+    name: "Kilométrage"
+    filters:
+      - multiply: 1.609344
+    unit_of_measurement: km
+  charge_current:
+    name: "Courant de charge"
+  charge_voltage:
+    name: "Tension de charge"
+  charge_power:
+    name: "Puissance de charge"
+  charge_energy_added:
+    name: "Énergie ajoutée"
+  charge_distance_added:
+    name: "Autonomie ajoutée"
+    filters:
+      - multiply: 1.609344
+    unit_of_measurement: km
+  max_soc:
+    name: "Limite de charge"
+  max_amps:
+    name: "Limitation d'ampérage"
+  mins_to_limit:
+    name: "Temps avant fin de charge"
+  battery_range:
+    name: "Autonomie"
+    filters:
+      - multiply: 1.609344
+    unit_of_measurement: km
+  charging_state:
+    name: "État de charge"
+    filters:
+      - substitute:
+          - "Disconnected -> Déconnecté"
+          - "Engaged -> Connecté"
+          - "Charging -> En charge"
+          - "Starting -> Démarrage"
+          - "Complete -> Terminée"
+          - "Stopped -> Arrêtée"
+          - "No Power -> Pas d'alimentation"
+  charge_port_latch_state:
+    name: "Verrouillage trappe de charge"
+    filters:
+      - substitute:
+          - "Engaged -> Verrouillée"
+          - "Disengaged -> Déverrouillée"
+  last_update:
+    name: "Dernière mise à jour"
+  is_climate_on:
+    name: "Climatisation"
+  internal_temp:
+    name: "Température intérieure"
+  external_temp:
+    name: "Température extérieure"
+  windows_state:
+    name: "Vitres"
+  tpms_pressure_fl:
+    name: "Pression avant gauche"
+  tpms_pressure_fr:
+    name: "Pression avant droite"
+  tpms_pressure_rl:
+    name: "Pression arrière gauche"
+  tpms_pressure_rr:
+    name: "Pression arrière droite"
+  ble_disconnected_time:
+    name: "Durée de déconnexion BLE"
+  charger_phases:
+    name: "Phases de charge"
+  charge_rate:
+    name: "Vitesse de charge"
+  driver_temp:
+    name: "Température climatisation"
+
+button:
+  - id: !extend ble_pair
+    name: "Appairage clé BLE"
+  - id: !extend btn_wake_up
+    name: "Réveiller"
+  - id: !extend btn_flash_light
+    name: "Appel de phares"
+  - id: !extend btn_sound_horn
+    name: "Klaxonner"
+  - id: !extend btn_unlock_charge_port
+    name: "Déverrouiller la trappe de charge"
+  - id: !extend btn_unlatch_driver_door
+    name: "Ouvrir la porte conducteur"
+  - id: !extend btn_media_play
+    name: "Lecture/Pause"
+  - id: !extend btn_media_next_track
+    name: "Piste suivante"
+  - id: !extend btn_media_previous_track
+    name: "Piste précédente"
+  - id: !extend btn_regenerate_key
+    name: "Régénérer la clé"
+  - id: !extend btn_force_data_update
+    name: "Actualisation manuelle des données"
+
+sensor:
+  - id: !extend ble_signal
+    name: "Signal BLE"
+
+switch:
+  - id: !extend sw_charger
+    name: "Charge"
+  - id: !extend sw_sentry_mode
+    name: "Mode Sentinelle"
+  - id: !extend sw_climate
+    name: "Climatisation"
+  - id: !extend sw_steering_wheel_heat
+    name: "Volant chauffant"
+  - id: !extend sw_low_power_mode
+    name: "Mode basse consommation"
+  - id: !extend sw_keep_accessory_power_on
+    name: "Garder les accessoires alimentés"
+  - id: !extend sw_defrost_car
+    name: "Dégivrer le véhicule"
+  - id: !extend sw_ble_connection
+    name: "Connexion BLE"
+  - id: !extend fast_poll_if_unlocked
+    name: "Interrogation rapide si déverrouillée"
+  - id: !extend wake_on_boot
+    name: "Réveiller au démarrage"
+
+lock:
+  - id: !extend lock_car
+    name: "Verrouillage du véhicule"
+
+cover:
+  - id: !extend cov_vent
+    name: "Vitres entrouvertes"
+  - id: !extend cov_charge_port
+    name: "Trappe de charge"
+  - id: !extend cov_boot
+    name: "Coffre arrière"
+  - id: !extend cov_frunk
+    name: "Coffre avant (Frunk)"
+
+number:
+  - id: !extend charging_amps
+    name: "Ampérage de charge"
+  - id: !extend charging_limit
+    name: "Limite de charge"
+  - id: !extend set_climate_temp
+    name: "Température climatisation"
+  - id: !extend post_wake_poll_time
+    name: "Intervalle d'interrogation après réveil"
+  - id: !extend poll_data_period
+    name: "Intervalle d'interrogation par défaut"
+  - id: !extend poll_asleep_period
+    name: "Intervalle d'interrogation en veille"
+  - id: !extend poll_charging_period
+    name: "Intervalle d'interrogation en charge"
+  - id: !extend ble_disconnected_min_time
+    name: "Durée min. avant déconnexion BLE"
