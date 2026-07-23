@@ -57,6 +57,7 @@ packages:
   #    - packages/language_hu.yml # Uncomment this to translate the entity names to your language. If yours is missing, submit a PR here!
   #    - packages/language_de.yml # Uncomment this to translate the entity names to your language. If yours is missing, submit a PR here!
   #    - packages/language_nl.yml # Uncomment this to translate the entity names to your language. If yours is missing, submit a PR here!
+  #    - packages/language_fr.yml # Uncomment this to translate the entity names to your language. If yours is missing, submit a PR here!
 
 # The following shows how to change the name of a sensor and how to change any of the parameters.
 # tesla_ble_vehicle: # THIS LINE MUST BE UNCOMMENTED IF ANY OF THE CHANGES BELOW ARE WANTED
