@@ -30,7 +30,7 @@ esphome:
               "\n**********************************************************************************************");
           // EUI-48 (IEEE 802) defines a 48-bit MAC address as 6 colon-separated hex octets (XX:XX:XX:XX:XX:XX):
           // 12 hex digits + 5 colons = 17 characters, so sizeof == 18 including the null terminator.
-          static_assert("$ble_mac_address" != "00:00:00:00:00:00",
+          static_assert (std::string_view ("$ble_mac_address") != "00:00:00:00:00:00",
               "\n\n**********************************************************************************************"
               "\n***                                  IMPORTANT                                             ***"
               "\n***                                  =========                                             ***"
@@ -707,14 +707,14 @@ select:
     set_action:
       - lambda: |-
           int param = 0;
-          if (x.c_str() != "Unknown")
+          if (x != "Unknown")
           {
             //if (x == "Off") // do nothing as param = 0
-            if (x.c_str() == "On")
+            if (x == "On")
             {
               param = CarServer_SetCabinOverheatProtectionAction_on_tag;
             }
-            else if (x.c_str() == "Fan")
+            else if (x == "Fan")
             {
               param = CarServer_SetCabinOverheatProtectionAction_fan_only_tag;
             }
