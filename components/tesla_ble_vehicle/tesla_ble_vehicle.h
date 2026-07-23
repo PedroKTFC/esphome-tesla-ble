@@ -372,6 +372,13 @@ namespace esphome
                     if (s) s->invalidate_state();
                 cabin_overheat_select_->publish_state("Unknown");
             }
+            template<typename E>
+            constexpr auto to_underlying (E e) noexcept
+            {
+                static_assert (std::is_enum_v<E>, "to_underlying requires an enum type");
+                return static_cast<std::underlying_type_t<E>>(e);
+            }
+
             template<typename T, typename V>
             inline void publish_if (T* sensor, const V& value) {
                 if (sensor) sensor->publish_state (value);
@@ -379,7 +386,6 @@ namespace esphome
             inline void publishSensor (BinarySensorId id, bool value) {
                 publish_if (binary_sensors_[static_cast<size_t>(id)], value);
             }
-
             inline void publishSensor (TextSensorId id, const std::string& value) {
                 publish_if (text_sensors_[static_cast<size_t>(id)], value);
             }
