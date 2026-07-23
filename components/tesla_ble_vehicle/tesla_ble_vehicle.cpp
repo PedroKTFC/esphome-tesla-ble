@@ -113,7 +113,7 @@ namespace esphome
       switch (current_command.state)
       {
       case BLECommandState::IDLE:
-        ESP_LOGI(TAG, "[%s] Preparing command.. action value %d", current_command.execute_name.c_str(), current_command.action);
+        ESP_LOGI(TAG, "[%s] Preparing command.. action value %d", current_command.execute_name.c_str(), to_underlying (current_command.action));
         /*
          * If the car is asleep and the command is an Infotainment data request (identified by a "get" in the execute_name
          * field), then ignore the request as we don't want to risk waking the car.
@@ -1546,7 +1546,7 @@ namespace esphome
     {
       if (get_action_detail(action).localActionDef != action)
       {
-        ESP_LOGE (TAG, "[%s] Action requested %d not that in specifics %d", get_action_detail(action).action_str, action, get_action_detail(action).localActionDef);
+        ESP_LOGE (TAG, "[%s] Action requested %d not that in specifics %d", get_action_detail(action).action_str, to_underlying (action), to_underlying (get_action_detail (action).localActionDef));
         return 1;
       }
       /*
@@ -1856,7 +1856,8 @@ namespace esphome
                 case CarServer_ChargeState_ChargingState_NoPower_tag:
                 case CarServer_ChargeState_ChargingState_Stopped_tag:
                   publishSensor (NumericSensorId::MinsToLimit, NAN); // If not charging, minutes to limit makes no sense
-                default:
+                  [[fallthrough]];
+                  default:
                   car_is_charging_ = NotCharging;
               }
               charging_state_raw_ = carserver_response.response_msg.vehicleData.charge_state.charging_state.which_type;
@@ -2035,7 +2036,7 @@ namespace esphome
             auto& charge_schedule_state_ = carserver_response.response_msg.vehicleData.charge_schedule_state;
             schedules_json_.clear();
             schedules_json_ = "{\"charge_schedules\": [";
-            char hhmm_[8];
+            char hhmm_[16]; //16 is too large but it avoids compiler warnings!
             for (size_t i = 0; i < charge_schedule_state_.charge_schedules_count; i++)
             {
               const auto &s = charge_schedule_state_.charge_schedules[i];
@@ -2053,14 +2054,14 @@ namespace esphome
               schedules_json_ += ",\"start_time\":";
               schedules_json_ += std::to_string(s.start_time);
               schedules_json_ += ",\"*start_time\":";
-              snprintf (hhmm_, sizeof (hhmm_), "\"%02d:%02d\"", (s.start_time / 60), (s.start_time % 60));
+              snprintf (hhmm_, sizeof (hhmm_), "\"%02d:%02d\"", static_cast<int>(s.start_time / 60), static_cast<int>(s.start_time % 60));
               schedules_json_ += hhmm_;
               schedules_json_ += ",\"end_enabled\":";
               schedules_json_ += s.end_enabled ? "true" : "false";
               schedules_json_ += ",\"end_time\":";
               schedules_json_ += std::to_string(s.end_time);
               schedules_json_ += ",\"*end_time\":";
-              snprintf (hhmm_, sizeof (hhmm_), "\"%02d:%02d\"", (s.end_time / 60), (s.end_time % 60));
+              snprintf (hhmm_, sizeof (hhmm_), "\"%02d:%02d\"", static_cast<int>(s.end_time / 60), static_cast<int>(s.end_time % 60));
               schedules_json_ += hhmm_;
               schedules_json_ += ",\"one_time\":";
               schedules_json_ += s.one_time ? "true" : "false";
