@@ -92,6 +92,8 @@ button:
 sensor:
   - id: !extend ble_signal
     name: "BLE-Signaalsterkte"
+  - id: !extend charge_power_calculated
+    name: "Berekend laadvermogen"
 switch:
   - id: !extend sw_charger
     name: "Laden"
