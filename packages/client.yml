@@ -312,7 +312,7 @@ sensor:
         float current = id(charge_current).state;
         float phases = id(charger_phases).state;
         
-        // Vermeidet Multiplikation mit NaN oder ungültigen Werten
+        // Avoids multiplication by NaN or invalid values
         if (std::isnan(voltage) || std::isnan(current) || std::isnan(phases)) {
           return {};
         }
