@@ -304,6 +304,7 @@ sensor:
     state_class: measurement
     icon: mdi:lightning-bolt
     accuracy_decimals: 0
+    disabled_by_default: true
     update_interval: 2s
     lambda: |-
       if (id(charge_voltage).has_state() && id(charge_current).has_state() && id(charger_phases).has_state()) {
