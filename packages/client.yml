@@ -296,6 +296,31 @@ sensor:
     update_interval: 60s
     entity_category: diagnostic
 
+  - platform: template
+    name: "Charge power calculated"
+    id: charge_power_calculated
+    unit_of_measurement: "W"
+    device_class: power
+    state_class: measurement
+    icon: mdi:lightning-bolt
+    accuracy_decimals: 0
+    disabled_by_default: true
+    update_interval: 2s
+    lambda: |-
+      if (id(charge_voltage).has_state() && id(charge_current).has_state() && id(charger_phases).has_state()) {
+        float voltage = id(charge_voltage).state;
+        float current = id(charge_current).state;
+        float phases = id(charger_phases).state;
+        
+        // Avoids multiplication by NaN or invalid values
+        if (std::isnan(voltage) || std::isnan(current) || std::isnan(phases)) {
+          return {};
+        }
+        
+        return voltage * current * phases;
+      }
+      return {};
+
 switch:
   - platform: template
     id: sw_charger
