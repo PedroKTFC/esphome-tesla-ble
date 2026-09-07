@@ -293,12 +293,21 @@ namespace esphome
             int ble_disconnected_time_;
             int ble_disconnected_min_time_;
             int fast_poll_if_unlocked_ = 1; // != 0 enables fast polling
-            int allow_setting_schedules_ = 0;
+            int allow_setting_schedules_ =0;
             int number_updates_since_connection_ = 0;
             UniversalMessage_RoutableMessage read_queue_message_;
             CarServer_Response static_carserver_response_;
             unsigned char static_message_buffer_[UniversalMessage_RoutableMessage_size];
             CarServer_Action actions_action_message_;
+            /*
+            * Tracks the Infotainment connection status. In theory it goes Unknown when the car is away but it can also happen if the
+            * BLE connection drops for long enough. If it recovers the car is likely to be asleep and so Infotainment sensors will remain
+            * unknown. We therefore need to wake the car but we also need to avoid waking the car too frequently.
+            */
+            bool infotainment_state_unknown_ = false;
+            uint32_t last_wake_attempt_{0};
+            static constexpr uint32_t WAKE_COOLDOWN = 30UL * 60UL * 1000UL;
+
             //BLETXChunk static_tx_chunk_;
             //BLERXChunk static_rx_chunk_;
 
@@ -390,6 +399,7 @@ namespace esphome
                 for (auto* s : binary_sensors_)
                     if (s) s->invalidate_state();
                 cabin_overheat_select_->publish_state("Unknown");
+                infotainment_state_unknown_ = true;
             }
             template<typename E>
             constexpr auto to_underlying (E e) noexcept
@@ -407,8 +417,12 @@ namespace esphome
             }
             inline void publishSensor (TextSensorId id, const std::string& value) {
                 publish_if (text_sensors_[static_cast<size_t>(id)], value);
+                /*
+                * Setting an infotainment sensor's state clearly implies it's not unknown. Beware of doing this for any as
+                * some sensors are set by the VCSEC system or just as diagnostics. Only text sensors are Infotainment only.
+                */
+                infotainment_state_unknown_ = false;
             }
-
             inline void publishSensor (NumericSensorId id, float value) {
                 publish_if (numeric_sensors_[static_cast<size_t>(id)], value);
             }

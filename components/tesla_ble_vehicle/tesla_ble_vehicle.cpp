@@ -467,7 +467,6 @@ namespace esphome
         ESP_LOGE(TAG, "BLE RX: Message length (%d) exceeds max BLE message size", buffer_len_post_append);
         // clear buffer
         this->ble_read_buffer_.clear();
-//        this->ble_read_buffer_.shrink_to_fit();
         return;
       }
 
@@ -506,7 +505,6 @@ namespace esphome
       ESP_LOGD(TAG, "BLE RX: Parsed UniversalMessage");
       // clear read buffer
       this->ble_read_buffer_.clear();         // This will set the size to 0
-//      this->ble_read_buffer_.shrink_to_fit(); // This will reduce the capacity to fit the size
 
       response_queue_.emplace(read_queue_message_);
       return;
@@ -574,7 +572,6 @@ namespace esphome
         if (read_queue_message_.signedMessageStatus.operation_status == UniversalMessage_OperationStatus_E_OPERATIONSTATUS_ERROR)
         {
           // reset authentication for domain
-//          auto session = tesla_ble_client_->getPeer(read_queue_message_.from_destination.sub_destination.domain);
           invalidateSession(read_queue_message_.from_destination.sub_destination.domain);
         }
       }
@@ -908,7 +905,6 @@ namespace esphome
         {
           // clear command queue if not connected or on first boot (prevent restore value triggering commands)
           pop_command_and_tidy_up ();
-//          command_queue_.pop();
         }
         return;
       }
@@ -1438,7 +1434,6 @@ namespace esphome
         ESP_LOGI(TAG, "Vehicle is already awake");
         return 0;
       }
-
       // enqueue command
       ESP_LOGI(TAG, "Adding wakeVehicle command to queue");
         placeAtFrontOfQueue (UniversalMessage_Domain_DOMAIN_VEHICLE_SECURITY,
@@ -1466,7 +1461,7 @@ namespace esphome
           lock_command = "unlock vehicle";
           break;
         case VCSEC_RKEAction_E_RKE_ACTION_LOCK:
-          lock_command = "sendCarServerVehicleActionMessagelock vehicle";
+          lock_command = "lock vehicle";
           break;
         default:
           ESP_LOGE(TAG, "Invalid lock request");
@@ -1518,7 +1513,6 @@ namespace esphome
         number_updates_since_connection_ = 0; // Ensures a one off update reads everything
         action_str = "data update | forced";
       }
-
       command_queue_.emplace(
           force ? UniversalMessage_Domain_DOMAIN_INFOTAINMENT : UniversalMessage_Domain_DOMAIN_VEHICLE_SECURITY, [this]()
           {
@@ -1612,8 +1606,6 @@ namespace esphome
 
     int TeslaBLEVehicle::handleSessionInfoUpdate(const UniversalMessage_RoutableMessage& message, UniversalMessage_Domain domain)
     {
-      ESP_LOGD(TAG, "Received session info response from domain %s", domain_to_string(domain));
-
       const char* domain_str = domain_to_string(domain);
       ESP_LOGD(TAG, "Received session info update from domain %s", domain_str);
       auto session = tesla_ble_client_->getPeer(domain);
@@ -1622,7 +1614,6 @@ namespace esphome
         ESP_LOGE(TAG, "No session found for domain %s", domain_str);
         return -1;
       }
-
       // parse session info
       Signatures_SessionInfo session_info = Signatures_SessionInfo_init_default;
       int return_code = tesla_ble_client_->parsePayloadSessionInfo (const_cast<UniversalMessage_RoutableMessage_session_info_t*>(&message.payload.session_info), &session_info);
@@ -1632,7 +1623,6 @@ namespace esphome
         return return_code;
       }
       log_session_info(TAG, &session_info);
-
       switch (session_info.status)
       {
       case Signatures_Session_Info_Status_SESSION_INFO_STATUS_OK:
@@ -1642,7 +1632,6 @@ namespace esphome
         ESP_LOGE(TAG, "Session is invalid: Key not on whitelist");
         return 1;
       };
-
       ESP_LOGD(TAG, "Updating session info..");
       return_code = session->updateSession(&session_info);
       if (return_code != 0)
@@ -1650,14 +1639,12 @@ namespace esphome
         ESP_LOGE(TAG, "Failed to update session info");
         return return_code;
       }
-
       // save session info to NVS
       return_code = nvs_save_session_info(session_info, domain);
       if (return_code != 0)
       {
         ESP_LOGE(TAG, "Failed to save %s session info to NVS", domain_str);
       }
-
       if (!command_queue_.empty())
       {
         BLECommand current_command = command_queue_.front();
@@ -1988,7 +1975,6 @@ namespace esphome
             {
               ESP_LOGI (TAG, "No data to set cabin overheat temperature");
             }
-
             publishSensor (TextSensorId::LastUpdate, ctime(&timestamp));
           }
           else if (carserver_response.response_msg.vehicleData.has_closures_state)
@@ -2105,50 +2091,57 @@ namespace esphome
 
     int TeslaBLEVehicle::handleVCSECVehicleStatus(VCSEC_VehicleStatus vehicleStatus)
     {
+      if (infotainment_state_unknown_)
+      { // Infotainment sensors are Unknown but VCSEC data is arriving and car must be present so likely connection dropped and recovered.
+        uint32_t now = millis();
+        if ((now - last_wake_attempt_) > WAKE_COOLDOWN)
+        { // Ensure we don't wake too frequently
+          last_wake_attempt_ = now;
+          TeslaBLEVehicle::wakeVehicle();
+          ESP_LOGW (TAG, "Waking car after BLE disconnection");
+        }
+      }
       log_vehicle_status(TAG, &vehicleStatus);
       switch (vehicleStatus.vehicleSleepStatus)
       {
-      case VCSEC_VehicleSleepStatus_E_VEHICLE_SLEEP_STATUS_AWAKE:
-        publishSensor (BinarySensorId::IsAsleep, false);
-        break;
-      case VCSEC_VehicleSleepStatus_E_VEHICLE_SLEEP_STATUS_ASLEEP:
-        publishSensor (BinarySensorId::IsAsleep, true);
-        break;
-      case VCSEC_VehicleSleepStatus_E_VEHICLE_SLEEP_STATUS_UNKNOWN:
-      default:
-        publishSensor (BinarySensorId::IsAsleep, NAN);
-        break;
+        case VCSEC_VehicleSleepStatus_E_VEHICLE_SLEEP_STATUS_AWAKE:
+          publishSensor (BinarySensorId::IsAsleep, false);
+          break;
+        case VCSEC_VehicleSleepStatus_E_VEHICLE_SLEEP_STATUS_ASLEEP:
+          publishSensor (BinarySensorId::IsAsleep, true);
+          break;
+        case VCSEC_VehicleSleepStatus_E_VEHICLE_SLEEP_STATUS_UNKNOWN:
+        default:
+          publishSensor (BinarySensorId::IsAsleep, NAN);
+          break;
       } // switch vehicleSleepStatus
-
       switch (vehicleStatus.userPresence)
       {
-      case VCSEC_UserPresence_E_VEHICLE_USER_PRESENCE_PRESENT:
-        publishSensor (BinarySensorId::IsUserPresent, true);
-        break;
-      case VCSEC_UserPresence_E_VEHICLE_USER_PRESENCE_NOT_PRESENT:
-        publishSensor (BinarySensorId::IsUserPresent, false);
-        break;
-      case VCSEC_UserPresence_E_VEHICLE_USER_PRESENCE_UNKNOWN:
-      default:
-        publishSensor (BinarySensorId::IsUserPresent, NAN);
-        break;
+        case VCSEC_UserPresence_E_VEHICLE_USER_PRESENCE_PRESENT:
+          publishSensor (BinarySensorId::IsUserPresent, true);
+          break;
+        case VCSEC_UserPresence_E_VEHICLE_USER_PRESENCE_NOT_PRESENT:
+          publishSensor (BinarySensorId::IsUserPresent, false);
+          break;
+        case VCSEC_UserPresence_E_VEHICLE_USER_PRESENCE_UNKNOWN:
+        default:
+          publishSensor (BinarySensorId::IsUserPresent, NAN);
+          break;
       } // switch userPresence
-
       switch (vehicleStatus.vehicleLockState)
       {
-      case VCSEC_VehicleLockState_E_VEHICLELOCKSTATE_UNLOCKED:
-      case VCSEC_VehicleLockState_E_VEHICLELOCKSTATE_SELECTIVE_UNLOCKED:
-        publishSensor (BinarySensorId::IsUnlocked, true);
-        break;
-      case VCSEC_VehicleLockState_E_VEHICLELOCKSTATE_LOCKED:
-      case VCSEC_VehicleLockState_E_VEHICLELOCKSTATE_INTERNAL_LOCKED:
-        publishSensor (BinarySensorId::IsUnlocked, false);
-        break;
-      default:
-        publishSensor (BinarySensorId::IsUnlocked, NAN);
-        break;
+        case VCSEC_VehicleLockState_E_VEHICLELOCKSTATE_UNLOCKED:
+        case VCSEC_VehicleLockState_E_VEHICLELOCKSTATE_SELECTIVE_UNLOCKED:
+          publishSensor (BinarySensorId::IsUnlocked, true);
+          break;
+        case VCSEC_VehicleLockState_E_VEHICLELOCKSTATE_LOCKED:
+        case VCSEC_VehicleLockState_E_VEHICLELOCKSTATE_INTERNAL_LOCKED:
+          publishSensor (BinarySensorId::IsUnlocked, false);
+          break;
+        default:
+          publishSensor (BinarySensorId::IsUnlocked, NAN);
+          break;
       } // switch vehicleLockState
-
       if (vehicleStatus.vehicleSleepStatus == VCSEC_VehicleSleepStatus_E_VEHICLE_SLEEP_STATUS_AWAKE)
       {
         if (!binary_sensors_[static_cast<size_t>(BinarySensorId::IsChargeFlapOpen)]->has_state())
@@ -2188,7 +2181,6 @@ namespace esphome
       {
         break;
       }
-
       case ESP_GATTC_OPEN_EVT:
       {
         if (param->open.status == ESP_GATT_OK)
@@ -2198,7 +2190,6 @@ namespace esphome
 //          ble_disconnected_ = BleConnected;
 //          number_updates_since_connection_ = 0; //Reset update loop counter
 //          publishSensor (NumericSensorId::BleDisconnectedTime, 0);
-
           // generate random connection id 16 bytes
           pb_byte_t connection_id[16];
           for (int i = 0; i < 16; i++)
@@ -2210,7 +2201,6 @@ namespace esphome
         }
         break;
       }
-
       case ESP_GATTC_SRVC_CHG_EVT:
       {
         esp_bd_addr_t bda;
@@ -2218,11 +2208,9 @@ namespace esphome
         ESP_LOGD(TAG, "ESP_GATTC_SRVC_CHG_EVT, bd_addr: %s", format_hex(bda, sizeof(esp_bd_addr_t)).c_str());
         break;
       }
-
       case ESP_GATTC_CLOSE_EVT:
       {
         ESP_LOGW(TAG, "BLE connection closed!");
-//        this->node_state = espbt::ClientState::IDLE;  // Shouldn't be needed as set by the default handler
 
         ble_disconnected_ = BleDisconnected;
         // set binary sensors to unknown
@@ -2236,17 +2224,14 @@ namespace esphome
         this->status_set_warning("BLE connection closed");
         break;
       }
-
       case ESP_GATTC_DISCONNECT_EVT:
       {
         this->handle_ = 0;
         this->read_handle_ = 0;
         this->write_handle_ = 0;
-//        this->node_state = espbt::ClientState::DISCONNECTING;  // Shouldn't be needed as set by the default handler
         ESP_LOGW(TAG, "Disconnected!");
         break;
       }
-
       case ESP_GATTC_SEARCH_CMPL_EVT:
       {
         auto *readChar = this->parent()->get_characteristic(this->service_uuid_, this->read_uuid_);
@@ -2275,13 +2260,11 @@ namespace esphome
         ESP_LOGD(TAG, "Successfully set read and write char handle");
         break;
       }
-
       case ESP_GATTC_UNREG_EVT:
       {
         ESP_LOGD(TAG, "ESP_GATTC_UNREG_EVT ");
         break;
       }
-
       case ESP_GATTC_READ_CHAR_EVT:
       {
         if (param->read.conn_id != this->parent()->get_conn_id())
@@ -2294,7 +2277,6 @@ namespace esphome
         ESP_LOGD(TAG, "ESP_GATTC_READ_CHAR_EVT ");
         break;
       }
-
       case ESP_GATTC_REG_FOR_NOTIFY_EVT:
       {
         if (param->reg_for_notify.status != ESP_GATT_OK)
@@ -2302,13 +2284,11 @@ namespace esphome
           ESP_LOGE(TAG, "reg for notify failed, error status = %x", param->reg_for_notify.status);
           break;
         }
-//        this->node_state = espbt::ClientState::ESTABLISHED;
-this->parent_->set_state (espbt::ClientState::ESTABLISHED);
+        this->parent_->set_state (espbt::ClientState::ESTABLISHED);
         this->status_clear_warning();
         ble_disconnected_ = BleConnected;
         number_updates_since_connection_ = 0; //Reset update loop counter
         publishSensor (NumericSensorId::BleDisconnectedTime, 0);
-
         unsigned char private_key_buffer[PRIVATE_KEY_SIZE];
         size_t private_key_length = 0;
         int return_code = tesla_ble_client_->getPrivateKey(private_key_buffer, sizeof(private_key_buffer), &private_key_length);
@@ -2318,7 +2298,6 @@ this->parent_->set_state (espbt::ClientState::ESTABLISHED);
           break;
         }
         ESP_LOGD(TAG, "Loaded private key");
-
         unsigned char public_key_buffer[PUBLIC_KEY_SIZE];
         size_t public_key_length = tesla_ble_client_->getPublicKey (public_key_buffer, sizeof (public_key_buffer));
         if (public_key_length == 0)
@@ -2329,7 +2308,6 @@ this->parent_->set_state (espbt::ClientState::ESTABLISHED);
         ESP_LOGD(TAG, "Loaded public key");
         break;
       }
-
       case ESP_GATTC_WRITE_DESCR_EVT:
       {
         if (param->write.conn_id != this->parent()->get_conn_id())
@@ -2342,7 +2320,6 @@ this->parent_->set_state (espbt::ClientState::ESTABLISHED);
         break;
       }
       case ESP_GATTC_WRITE_CHAR_EVT:
-
         if (param->write.status != ESP_GATT_OK)
         {
           ESP_LOGE(TAG, "write char failed, error status = %x", param->write.status);
@@ -2360,7 +2337,6 @@ this->parent_->set_state (espbt::ClientState::ESTABLISHED);
         }
         ESP_LOGV(TAG, "RAM left: %ld, minimum was: %ld", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
         // copy notify value to buffer
-//        std::vector<unsigned char> buffer(param->notify.value, param->notify.value + param->notify.value_len);
         ble_read_queue_.emplace(param->notify.value, param->notify.value + param->notify.value_len);
         break;
       }
