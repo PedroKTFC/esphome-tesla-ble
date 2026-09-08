@@ -317,8 +317,8 @@ sensor:
           return voltage * current * phases;
         }
       }
-      // Returns NaN if one or more of the three sensors for the calculation is NaN
-      return NaN;
+      // Returns NAN if one or more of the three sensors for the calculation is nan
+      return NAN;
 
 switch:
   - platform: template
