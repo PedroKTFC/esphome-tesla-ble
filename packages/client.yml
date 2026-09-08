@@ -313,13 +313,12 @@ sensor:
         float phases = id(charger_phases).state;
         
         // Avoids multiplication by NaN or invalid values
-        if (std::isnan(voltage) || std::isnan(current) || std::isnan(phases)) {
-          return {};
+        if (!std::isnan(voltage) && !std::isnan(current) && !std::isnan(phases)) {
+          return voltage * current * phases;
         }
-        
-        return voltage * current * phases;
       }
-      return {};
+      // Returns NaN if one or more of the three sensors for the calculation is NaN
+      return NaN;
 
 switch:
   - platform: template
