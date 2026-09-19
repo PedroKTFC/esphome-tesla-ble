@@ -1557,14 +1557,7 @@ namespace esphome
               break;
             case AllowedMsg::VehicleActionMessage:
             // Need to create a vehicle action message
-              if (long_param == 0)
-              {
-                return_code = actions_buildCarServerVehicleActionMessage (static_cast<int32_t>(param), static_message_buffer_, &message_length, get_action_detail(action).actionTag);
-              }
-              else
-              {
-                return_code = actions_buildCarServerVehicleActionMessage (0, static_message_buffer_, &message_length, get_action_detail(action).actionTag, long_param);
-              }
+              return_code = actions_buildCarServerVehicleActionMessage (static_cast<int32_t>(param), static_message_buffer_, &message_length, get_action_detail(action).actionTag, long_param);
               if ((action == BLE_CarServer_VehicleAction::SET_CHARGING_SWITCH) and (param == 1))
               { // If charging has been requested, enable continuous polling
                 car_is_charging_ = ChargingJustStarted; //true;
@@ -1974,6 +1967,66 @@ namespace esphome
               else
             {
               ESP_LOGI (TAG, "No data to set cabin overheat temperature");
+            }
+            if (carserver_response.response_msg.vehicleData.climate_state.which_optional_seat_heater_left)
+            {
+              int32_t val = carserver_response.response_msg.vehicleData.climate_state.optional_seat_heater_left.seat_heater_left;
+              if (seat_heater_front_left_select_ != nullptr)
+              {
+                seat_heater_front_left_select_->publish_state(lookup_seat_heater_level(val));
+              }
+            }
+            else
+            {
+              ESP_LOGI (TAG, "No data to set front left seat heater");
+            }
+            if (carserver_response.response_msg.vehicleData.climate_state.which_optional_seat_heater_right)
+            {
+              int32_t val = carserver_response.response_msg.vehicleData.climate_state.optional_seat_heater_right.seat_heater_right;
+              if (seat_heater_front_right_select_ != nullptr)
+              {
+                seat_heater_front_right_select_->publish_state(lookup_seat_heater_level(val));
+              }
+            }
+            else
+            {
+              ESP_LOGI (TAG, "No data to set front right seat heater");
+            }
+            if (carserver_response.response_msg.vehicleData.climate_state.which_optional_seat_heater_rear_left)
+            {
+              int32_t val = carserver_response.response_msg.vehicleData.climate_state.optional_seat_heater_rear_left.seat_heater_rear_left;
+              if (seat_heater_rear_left_select_ != nullptr)
+              {
+                seat_heater_rear_left_select_->publish_state(lookup_seat_heater_level(val));
+              }
+            }
+            else
+            {
+              ESP_LOGI (TAG, "No data to set rear left seat heater");
+            }
+            if (carserver_response.response_msg.vehicleData.climate_state.which_optional_seat_heater_rear_center)
+            {
+              int32_t val = carserver_response.response_msg.vehicleData.climate_state.optional_seat_heater_rear_center.seat_heater_rear_center;
+              if (seat_heater_rear_center_select_ != nullptr)
+              {
+                seat_heater_rear_center_select_->publish_state(lookup_seat_heater_level(val));
+              }
+            }
+            else
+            {
+              ESP_LOGI (TAG, "No data to set rear center seat heater");
+            }
+            if (carserver_response.response_msg.vehicleData.climate_state.which_optional_seat_heater_rear_right)
+            {
+              int32_t val = carserver_response.response_msg.vehicleData.climate_state.optional_seat_heater_rear_right.seat_heater_rear_right;
+              if (seat_heater_rear_right_select_ != nullptr)
+              {
+                seat_heater_rear_right_select_->publish_state(lookup_seat_heater_level(val));
+              }
+            }
+            else
+            {
+              ESP_LOGI (TAG, "No data to set rear right seat heater");
             }
             publishSensor (TextSensorId::LastUpdate, ctime(&timestamp));
           }
