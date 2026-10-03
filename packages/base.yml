@@ -7,11 +7,12 @@ substitutions:
   tesla_ble_component: "github://PedroKTFC/esphome-tesla-ble"
   ble_presence_timeout: 30s
   ble_components: [tesla_ble_vehicle, tesla_ble_listener]
+  ota_mode: password
 
 esphome:
   project:
     name: PedroKTFC.esphome-tesla-ble
-    version: "2026.9.0-dev"
+    version: "2026.10.0-dev"
   name: ${device_name}
   name_add_mac_suffix: false
   friendly_name: ${friendly_name}
@@ -34,8 +35,7 @@ logger:
   level: INFO
 
 ota:
-  - platform: esphome
-    password: !secret ota_password
+  - !include ota-${ota_mode}.yml
 
 wifi:
   networks:
