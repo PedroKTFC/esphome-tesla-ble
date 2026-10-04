@@ -607,6 +607,7 @@ number:
     id: set_climate_temp
     icon: mdi:thermometer-lines
     unit_of_measurement: "°C"
+    device_class: temperature
     mode: slider
     update_interval: 2s
     min_value: 15
