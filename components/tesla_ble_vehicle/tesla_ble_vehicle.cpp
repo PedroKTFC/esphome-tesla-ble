@@ -2085,7 +2085,10 @@ namespace esphome
                   update_available = true;
                   break;
                 case CarServer_SoftwareUpdateState_SoftwareUpdateStatus_Unknown_tag:
+                  status = "No update available";
+                  break;
                 default:
+                  status = "Unknown";
                   break;
               }
             }
