@@ -23,6 +23,24 @@ namespace esphome
 {
   namespace tesla_ble_vehicle
   {
+    static bool decode_software_update_version(pb_istream_t *stream, const pb_field_t *, void **arg)
+    {
+      auto *version = static_cast<std::string *>(*arg);
+      size_t length = stream->bytes_left;
+      if (version == nullptr || length >= 64)
+      {
+        return false;
+      }
+
+      char buffer[64];
+      if (!pb_read(stream, reinterpret_cast<pb_byte_t *>(buffer), length))
+      {
+        return false;
+      }
+      version->assign(buffer, length);
+      return true;
+    }
+
     void TeslaBLEVehicle::dump_config()
     {
       ESP_LOGCONFIG(TAG, "Tesla BLE Vehicle:");
@@ -793,6 +811,9 @@ namespace esphome
         {
           UniversalMessage_MessageFault_E fault = UniversalMessage_MessageFault_E_MESSAGEFAULT_ERROR_NONE;
           static_carserver_response_ = CarServer_Response_init_default;
+          software_update_version_.clear();
+          static_carserver_response_.response_msg.vehicleData.software_update_state.optional_version.version.funcs.decode = decode_software_update_version;
+          static_carserver_response_.response_msg.vehicleData.software_update_state.optional_version.version.arg = &software_update_version_;
           int return_code = tesla_ble_client_->parsePayloadCarServerResponse(&read_queue_message_.payload.protobuf_message_as_bytes, &read_queue_message_.sub_sigData.signature_data, 1, fault, &static_carserver_response_);
           if (return_code != 0)
           {
@@ -1040,6 +1061,8 @@ namespace esphome
             sendCarServerVehicleActionMessage (BLE_CarServer_VehicleAction::GET_CLOSURES_STATE, 0);
           if ((number_updates_since_connection_ % get_action_detail(BLE_CarServer_VehicleAction::GET_TYRES_STATE).numberUpdatesBetweenGets) == 0)
             sendCarServerVehicleActionMessage (BLE_CarServer_VehicleAction::GET_TYRES_STATE, 0);
+          if ((number_updates_since_connection_ % get_action_detail(BLE_CarServer_VehicleAction::GET_SOFTWARE_UPDATE_STATE).numberUpdatesBetweenGets) == 0)
+            sendCarServerVehicleActionMessage (BLE_CarServer_VehicleAction::GET_SOFTWARE_UPDATE_STATE, 0);
           if ((car_just_woken_ != 0) and ((millis() - car_wake_time_) > post_wake_poll_time_))
           {
             car_just_woken_ = 0;
@@ -2029,6 +2052,58 @@ namespace esphome
             {
               ESP_LOGI (TAG, "No data to set tyre pressures");
             }
+            publishSensor (TextSensorId::LastUpdate, ctime(&timestamp));
+          }
+          else if (carserver_response.response_msg.vehicleData.has_software_update_state)
+          {
+            const auto &software_update = carserver_response.response_msg.vehicleData.software_update_state;
+            const char *status = "Unknown";
+            bool update_available = false;
+
+            if (software_update.has_status)
+            {
+              switch (software_update.status.which_type)
+              {
+                case CarServer_SoftwareUpdateState_SoftwareUpdateStatus_Installing_tag:
+                  status = "Installing";
+                  update_available = true;
+                  break;
+                case CarServer_SoftwareUpdateState_SoftwareUpdateStatus_Scheduled_tag:
+                  status = "Scheduled";
+                  update_available = true;
+                  break;
+                case CarServer_SoftwareUpdateState_SoftwareUpdateStatus_Available_tag:
+                  status = "Available";
+                  update_available = true;
+                  break;
+                case CarServer_SoftwareUpdateState_SoftwareUpdateStatus_DownloadingWifiWait_tag:
+                  status = "Downloading Wi-Fi wait";
+                  update_available = true;
+                  break;
+                case CarServer_SoftwareUpdateState_SoftwareUpdateStatus_Downloading_tag:
+                  status = "Downloading";
+                  update_available = true;
+                  break;
+                case CarServer_SoftwareUpdateState_SoftwareUpdateStatus_Unknown_tag:
+                default:
+                  break;
+              }
+            }
+
+            publishSensor (BinarySensorId::SoftwareUpdateAvailable, update_available);
+            publishSensor (TextSensorId::SoftwareUpdateState, status);
+            if (software_update.which_optional_version)
+            {
+              publishSensor (TextSensorId::SoftwareUpdateVersion, software_update_version_);
+            }
+            else
+            {
+              publishSensor (TextSensorId::SoftwareUpdateVersion, "Unknown");
+            }
+            publishSensor (NumericSensorId::SoftwareUpdateDownloadProgress,
+              software_update.which_optional_download_perc ? software_update.optional_download_perc.download_perc : NAN);
+            publishSensor (NumericSensorId::SoftwareUpdateInstallProgress,
+              software_update.which_optional_install_perc ? software_update.optional_install_perc.install_perc : NAN);
             publishSensor (TextSensorId::LastUpdate, ctime(&timestamp));
           }
           else if (carserver_response.response_msg.vehicleData.has_charge_schedule_state)

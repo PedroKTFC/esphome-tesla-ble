@@ -191,6 +191,21 @@ tesla_ble_vehicle:
     id: "driver_temp"
     name: "Climate temperature" # although it's the driver side temperature setting, use it for the overall climate setting
     disabled_by_default: true
+  software_update_available:
+    id: "software_update_available"
+    name: "Software update available"
+  software_update_state:
+    id: "software_update_state"
+    name: "Software update state"
+  software_update_version:
+    id: "software_update_version"
+    name: "Software update version"
+  software_update_download_progress:
+    id: "software_update_download_progress"
+    name: "Software update download progress"
+  software_update_install_progress:
+    id: "software_update_install_progress"
+    name: "Software update install progress"
 
 button:
   - platform: template
