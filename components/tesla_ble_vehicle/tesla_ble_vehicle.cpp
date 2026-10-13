@@ -2094,16 +2094,17 @@ namespace esphome
             publishSensor (TextSensorId::SoftwareUpdateState, status);
             if (software_update.which_optional_version)
             {
-              publishSensor (TextSensorId::SoftwareUpdateVersion, software_update_version_);
+              publishSensor (TextSensorId::SoftwareUpdateVersion,
+                software_update_version_.empty() ? "Unknown" : software_update_version_);
             }
             else
             {
               publishSensor (TextSensorId::SoftwareUpdateVersion, "Unknown");
             }
             publishSensor (NumericSensorId::SoftwareUpdateDownloadProgress,
-              software_update.which_optional_download_perc ? software_update.optional_download_perc.download_perc : NAN);
+              update_available and software_update.which_optional_download_perc ? software_update.optional_download_perc.download_perc : NAN);
             publishSensor (NumericSensorId::SoftwareUpdateInstallProgress,
-              software_update.which_optional_install_perc ? software_update.optional_install_perc.install_perc : NAN);
+              update_available and software_update.which_optional_install_perc ? software_update.optional_install_perc.install_perc : NAN);
             publishSensor (TextSensorId::LastUpdate, ctime(&timestamp));
           }
           else if (carserver_response.response_msg.vehicleData.has_charge_schedule_state)
