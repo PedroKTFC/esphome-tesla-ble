@@ -7,6 +7,17 @@ permissions:
   contents: read
 
 jobs:
+  charging-freshness:
+    name: Testing charging freshness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.1.7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install PyYAML
+      - run: python -m unittest discover -s tests -v
+
   ci:
     name: Building ${{ matrix.file }}
     runs-on: ubuntu-latest
@@ -17,6 +28,7 @@ jobs:
           - tesla-ble-esp32-generic.yml
           - tesla-ble-m5stack-atoms3.yml
           - tesla-ble-m5stack-nanoc6.yml
+          - tests/charging-freshness.yml
     steps:
       - uses: actions/checkout@v4.1.7
       - name: Mock secrets.yaml from example

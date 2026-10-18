@@ -1,0 +1,57 @@
+# Optional receipt timestamps for automations that need charging-data freshness.
+# Include after client.yml and common.yml. Raw callbacks also run for equal values
+# and run before user filters. Never refresh these timestamps on a timer.
+tesla_ble_vehicle:
+  charge_state:
+    on_raw_value:
+      - text_sensor.template.publish:
+          id: charge_level_received
+          state: !lambda |-
+            auto received = id(homeassistant_time).utcnow();
+            if (!received.is_valid() || !std::isfinite(x) || x < 0 || x > 100) {
+              return std::string("unavailable");
+            }
+            return received.strftime("%Y-%m-%dT%H:%M:%SZ");
+  charge_power:
+    on_raw_value:
+      - text_sensor.template.publish:
+          id: charge_power_received
+          state: !lambda |-
+            auto received = id(homeassistant_time).utcnow();
+            if (!received.is_valid() || !std::isfinite(x) || x < 0) {
+              return std::string("unavailable");
+            }
+            return received.strftime("%Y-%m-%dT%H:%M:%SZ");
+  charging_state:
+    on_raw_value:
+      - text_sensor.template.publish:
+          id: charging_state_received
+          state: !lambda |-
+            auto received = id(homeassistant_time).utcnow();
+            if (!received.is_valid() ||
+                (x != "Disconnected" && x != "No Power" && x != "Starting" &&
+                 x != "Charging" && x != "Complete" && x != "Stopped" &&
+                 x != "Calibrating")) {
+              return std::string("unavailable");
+            }
+            return received.strftime("%Y-%m-%dT%H:%M:%SZ");
+
+text_sensor:
+  - platform: template
+    id: charge_level_received
+    name: "Charge level received"
+    device_class: timestamp
+    entity_category: diagnostic
+    update_interval: never
+  - platform: template
+    id: charge_power_received
+    name: "Charge power received"
+    device_class: timestamp
+    entity_category: diagnostic
+    update_interval: never
+  - platform: template
+    id: charging_state_received
+    name: "Charging state received"
+    device_class: timestamp
+    entity_category: diagnostic
+    update_interval: never
