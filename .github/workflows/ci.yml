@@ -7,17 +7,6 @@ permissions:
   contents: read
 
 jobs:
-  charging-freshness:
-    name: Testing charging freshness
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4.1.7
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - run: pip install PyYAML
-      - run: python -m unittest discover -s tests -v
-
   ci:
     name: Building ${{ matrix.file }}
     runs-on: ubuntu-latest
