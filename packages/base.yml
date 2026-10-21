@@ -28,7 +28,7 @@ esp32:
     sdkconfig_options:
       CONFIG_MBEDTLS_PEM_WRITE_C: y
       CONFIG_MBEDTLS_PEM_PARSE_C: y
-W#  toolchain: platformio
+#  toolchain: platformio
 
 external_components:
   - source: $tesla_ble_component
