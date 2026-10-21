@@ -25,7 +25,10 @@ esp32:
   flash_size: $flash_size
   framework:
     type: esp-idf
-#  toolchain: platformio
+    sdkconfig_options:
+      CONFIG_MBEDTLS_PEM_WRITE_C: y
+      CONFIG_MBEDTLS_PEM_PARSE_C: y
+W#  toolchain: platformio
 
 external_components:
   - source: $tesla_ble_component
