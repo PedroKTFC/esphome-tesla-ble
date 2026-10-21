@@ -31,7 +31,7 @@ tesla_ble_vehicle:
             if (!received.is_valid() ||
                 ((x != "Disconnected") && (x != "No Power") && (x != "Starting") &&
                  (x != "Charging") && (x != "Complete") && (x != "Stopped") &&
-                 x != "Calibrating")) {
+                 (x != "Calibrating"))) {
               return std::string("unavailable");
             }
             return received.strftime("%Y-%m-%dT%H:%M:%SZ");
