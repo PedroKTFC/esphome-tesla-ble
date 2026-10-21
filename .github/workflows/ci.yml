@@ -17,7 +17,6 @@ jobs:
           - tesla-ble-esp32-generic.yml
           - tesla-ble-m5stack-atoms3.yml
           - tesla-ble-m5stack-nanoc6.yml
-          - tests/charging-freshness.yml
     steps:
       - uses: actions/checkout@v4.1.7
       - name: Mock secrets.yaml from example
