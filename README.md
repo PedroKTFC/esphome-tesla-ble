@@ -103,6 +103,10 @@ There are two categories, those available even when asleep and those only when a
   - Tyre pressures (bar). The four sensors - front left, front right, rear left, rear right - are disabled by default. 
   - Windows open/closed
 
+### Charging-data freshness
+
+For automations that must detect stale charging readings, see the optional [charging freshness package](./docs/charging-freshness.md). It exposes per-field receipt timestamps even when the values stay unchanged.
+
 ### Charging schedules
 
 Please refer to [charging_schedules.md](./docs/charging_schedules.md) for how to view, set and delete charging schedules.

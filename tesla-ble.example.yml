@@ -54,6 +54,7 @@ packages:
       - packages/common.yml
       - packages/project.yml
       - packages/client.yml
+  #    - packages/charging-freshness.yml # Optional receipt timestamps for charging watchdogs; see docs/charging-freshness.md
   #    - packages/listener.yml  # Uncomment this to scan find your VIN BLE MAC address
   #    - packages/evcc.yml  # Uncomment this if you plan to use the ESP for EVCC charge control
   #    - packages/language_hu.yml # Uncomment this to translate the entity names to your language. If yours is missing, submit a PR here!
