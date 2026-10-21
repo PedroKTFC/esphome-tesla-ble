@@ -30,7 +30,7 @@ tesla_ble_vehicle:
             auto received = id(homeassistant_time).utcnow();
             if (!received.is_valid() ||
                 ((x != "Disconnected") && (x != "No Power") && (x != "Starting") &&
-                 x != "Charging" && x != "Complete" && x != "Stopped" &&
+                 (x != "Charging") && (x != "Complete") && (x != "Stopped") &&
                  x != "Calibrating")) {
               return std::string("unavailable");
             }
