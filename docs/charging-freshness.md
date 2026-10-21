@@ -33,4 +33,4 @@ These are bridge receipt times with one-second resolution. They precede user fil
 
 ## Verify
 
-Build the dummy fixture with `esphome compile tests/charging-freshness.yml`; do not flash it. On your own device, confirm that repeated readings advance their timestamps and a quiet period or HA reconnect does not. Firmware compilation alone does not prove that behavior on hardware.
+On your own device, confirm that repeated readings advance their timestamps and a quiet period or HA reconnect does not. Firmware compilation alone does not prove that behavior on hardware.
