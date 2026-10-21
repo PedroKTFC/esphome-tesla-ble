@@ -3,6 +3,8 @@ substitutions:
   device_name: tesla-ble
   device_description: Tesla BLE
   charging_amps_max: "32"
+#  ota_mode: password # This is the default so no need for this line (this is here only for info)
+#  ota_mode: encryption # Uncomment this line to save memory
 
   # --- Single car setup (default) ---
   # Add the following two lines to your secrets.yaml:
