@@ -109,7 +109,11 @@ For automations that must detect stale charging readings, see the optional [char
 
 ### Charging schedules
 
-Please refer to [charging_schedules.md](./docs/charging_schedules.md) for how to view, set and delete charging schedules.
+Please refer to [charging_schedules.md](./docs/charging_schedules.md) for how to view, add, edit and delete charging schedules.
+
+### Preconditioning
+
+Please refer to [preconditioning.md](./docs/preconditioning.md) for how to start preconditioning from Home Assistant and how to view, add, edit and delete preconditioning (departure) schedules.
 
 ### Diagnostics
 

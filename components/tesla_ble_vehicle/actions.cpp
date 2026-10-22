@@ -186,6 +186,16 @@ int TeslaBLEVehicle::actions_buildCarServerVehicleActionMessage (
 		vehicle_action_msg_.removeChargeScheduleAction    = CarServer_RemoveChargeScheduleAction_init_default;
 		vehicle_action_msg_.removeChargeScheduleAction.id = long_param;
 		break;
+	case CarServer_VehicleAction_removePreconditionScheduleAction_tag:
+		vehicle_action_msg_.removePreconditionScheduleAction    = CarServer_RemovePreconditionScheduleAction_init_default;
+		vehicle_action_msg_.removePreconditionScheduleAction.id = long_param;
+		break;
+	case CarServer_VehicleAction_scheduledChargingAction_tag:
+		// set_value is minutes after midnight, a negative value disables scheduled charging
+		vehicle_action_msg_.scheduledChargingAction               = CarServer_ScheduledChargingAction_init_default;
+		vehicle_action_msg_.scheduledChargingAction.enabled       = (set_value >= 0);
+		vehicle_action_msg_.scheduledChargingAction.charging_time = (set_value >= 0) ? set_value : 0;
+		break;
 	case CarServer_VehicleAction_setCabinOverheatProtectionAction_tag :
 		vehicle_action_msg_.setCabinOverheatProtectionAction    = CarServer_SetCabinOverheatProtectionAction_init_default;
 		switch (set_value)
@@ -223,7 +233,71 @@ int TeslaBLEVehicle::actions_buildCarServerVehicleActionMessage (
 	}
 	return TeslaBLE::TeslaBLE_Status_E_OK;
 }
+int TeslaBLEVehicle::actions_queueBuiltAction (BLE_CarServer_VehicleAction action, std::function<void(CarServer_VehicleAction&)> fill)
+/*
+*   Queues a vehicle action whose message is too complex for actions_buildCarServerVehicleActionMessage (eg schedules). fill() sets
+*   the action specific part of the message. The action's ACTION_SPECIFICS row determines the tag and the get done afterwards.
+*/
+{
+	std::string action_str = get_action_detail(action).action_str;
+	std::function<int()> execute_cmd = [this, action, action_str, fill]()
+	{
+		actions_action_message_                                                   = CarServer_Action_init_default;
+		actions_action_message_.which_action_msg                                  = CarServer_Action_vehicleAction_tag;
+		actions_action_message_.action_msg.vehicleAction                          = CarServer_VehicleAction_init_default;
+		actions_action_message_.action_msg.vehicleAction.which_vehicle_action_msg = get_action_detail(action).actionTag;
+		fill (actions_action_message_.action_msg.vehicleAction);
+
+		size_t message_length = 0;
+		int status = tesla_ble_client_->buildCarServerActionPayload (&actions_action_message_, static_message_buffer_, &message_length);
+		if (status != TeslaBLE::TeslaBLE_Status_E_OK)
+		{
+			ESP_LOGE (TAG, "[%s] Failed to build car server vehicle action message", action_str.c_str());
+			if (status == TeslaBLE::TeslaBLE_Status_E_ERROR_INVALID_SESSION)
+			{
+				invalidateSession (UniversalMessage_Domain_DOMAIN_INFOTAINMENT);
+			}
+			return status;
+		}
+		status = writeBLE (static_message_buffer_, message_length, ESP_GATT_WRITE_TYPE_NO_RSP, ESP_GATT_AUTH_REQ_NONE);
+		if (status != 0)
+		{
+			ESP_LOGE (TAG, "[%s] Failed to send message", action_str.c_str());
+			return status;
+		}
+		return static_cast<int>(TeslaBLE::TeslaBLE_Status_E_OK);
+	};
+	ESP_LOGI (TAG, "[%s] Adding command to queue", action_str.c_str());
+	placeAtFrontOfQueue (UniversalMessage_Domain_DOMAIN_INFOTAINMENT, execute_cmd, action_str, action);
+	return TeslaBLE::TeslaBLE_Status_E_OK;
+}
+
+static bool schedule_values_valid (int days_of_week, int time1, int time2, float latitude, float longitude)
+{
+	return (days_of_week > 0)    and (days_of_week <= 127) and
+	       (time1 >= 0)          and (time1 <= 1440)       and
+	       (time2 >= 0)          and (time2 <= 1440)       and
+	       (latitude >= -90.0)   and (latitude <= 90.0)    and
+	       (longitude >= -180.0) and (longitude <= 180.0);
+}
+
+static uint64_t new_schedule_id (uint64_t requested_id)
+/*
+*   Tesla uses the creation time (epoch seconds) as the schedule ID. Sending an existing ID replaces (edits) that schedule.
+*/
+{
+	if (requested_id != 0)
+		return requested_id;
+	uint64_t now = static_cast<uint64_t>(time(nullptr));
+	if (now < 1700000000ULL)
+	{
+		ESP_LOGW (TAG, "Clock not set (is a time component configured?), schedule ID %" PRIu64 " may not be unique", now);
+	}
+	return now;
+}
+
 int TeslaBLEVehicle::actions_setChargeSchedule (
+	std::string id,
 	std::string name,
     int days_of_week,
     bool start_enabled,
@@ -234,98 +308,176 @@ int TeslaBLEVehicle::actions_setChargeSchedule (
     bool enabled,
     float latitude,
     float longitude)
+/*
+*   Adds a charge schedule, or replaces an existing one if id is that of an existing schedule.
+*/
 {
 	if (allow_setting_schedules_ == 0)
 	{
 		ESP_LOGW (TAG, "Setting charge schedules disabled. Set allow_setting_schedules in your yaml to non-zero and rebuild to enable.");
 		return 0;
 	}
-    if ((days_of_week <= 0)  or (days_of_week > 127) or
-        (start_time < 0)     or (start_time > 1440)  or
-        (end_time < 0)       or (end_time > 1440) or
-        (latitude < -90.0)   or (latitude > 90.0) or
-        (longitude < -90.0)  or (longitude > 90.0))
-    { // Do some basic validation on the numbers provided so impossible values rejected
-        ESP_LOGE (TAG, "Set charge schedule command rejected, one or more of days_of_week, start_time, end_time, latitude and longitude out of range");
-        return TeslaBLE::TeslaBLE_Status_E_ERROR_INTERNAL;
-    }
-    std::function<int()> execute_cmd;
-    execute_cmd = [this, name, days_of_week, start_enabled, start_time, end_enabled, end_time, one_time, enabled, latitude, longitude]()
-    {
-        // Build generic part action.action_msg.vehicleAction
-        actions_action_message_                                                   = CarServer_Action_init_default;
-        actions_action_message_.which_action_msg                                  = CarServer_Action_vehicleAction_tag;
-        actions_action_message_.action_msg.vehicleAction                          = CarServer_VehicleAction_init_default;
-        actions_action_message_.action_msg.vehicleAction.which_vehicle_action_msg = CarServer_VehicleAction_addChargeScheduleAction_tag;
-        // Now the  specific part.
-        auto& schedule = actions_action_message_.action_msg.vehicleAction.vehicle_action_msg.addChargeScheduleAction; // For legibility
-        if (name.length() >= sizeof(schedule.name))
-        {
-            ESP_LOGW(TAG, "Charge schedule name too long (%d characters), name will be truncated", name.length());
-        }
-        schedule.id =             static_cast<uint64_t>(time(nullptr));
-        strncpy(schedule.name, name.c_str(), sizeof(schedule.name) - 1);
-        schedule.name[sizeof(schedule.name) - 1] = '\0';
-        schedule.days_of_week =   days_of_week;
-        schedule.start_enabled =  start_enabled;
-        schedule.start_time =     start_time;
-        schedule.end_enabled =    end_enabled;
-        schedule.end_time =       end_time;
-        schedule.one_time =       one_time;
-        schedule.enabled =        enabled;
-        schedule.latitude =       latitude;
-        schedule.longitude =      longitude;
+	if (!schedule_values_valid (days_of_week, start_time, end_time, latitude, longitude))
+	{ // Do some basic validation on the numbers provided so impossible values rejected
+		ESP_LOGE (TAG, "Set charge schedule command rejected, one or more of days_of_week, start_time, end_time, latitude and longitude out of range");
+		return TeslaBLE::TeslaBLE_Status_E_ERROR_INTERNAL;
+	}
+	uint64_t requested_id = parse_schedule_id (id);
+	if (!id.empty() and requested_id == 0)
+	{
+		ESP_LOGE (TAG, "Set charge schedule command rejected, invalid schedule ID '%s'", id.c_str());
+		return TeslaBLE::TeslaBLE_Status_E_ERROR_INTERNAL;
+	}
+	uint64_t schedule_id = new_schedule_id (requested_id); // Fixed now so a retry doesn't create a second schedule
+	ESP_LOGI (TAG, "%s charge schedule %" PRIu64 ": days=%d start=%d(%d) end=%d(%d) one_time=%d enabled=%d lat=%f long=%f",
+	          requested_id ? "Updating" : "Creating", schedule_id, days_of_week, start_time, start_enabled, end_time, end_enabled,
+	          one_time, enabled, latitude, longitude);
+	return actions_queueBuiltAction (BLE_CarServer_VehicleAction::ADD_CHARGE_SCHEDULE,
+		[=](CarServer_VehicleAction& vehicle_action)
+		{
+			auto& schedule = vehicle_action.vehicle_action_msg.addChargeScheduleAction;
+			schedule               = CarServer_ChargeSchedule_init_default;
+			schedule.id            = schedule_id;
+			strncpy (schedule.name, name.c_str(), sizeof(schedule.name) - 1);
+			schedule.days_of_week  = days_of_week;
+			schedule.start_enabled = start_enabled;
+			schedule.start_time    = start_time;
+			schedule.end_enabled   = end_enabled;
+			schedule.end_time      = end_time;
+			schedule.one_time      = one_time;
+			schedule.enabled       = enabled;
+			schedule.latitude      = latitude;
+			schedule.longitude     = longitude;
+		});
+}
 
-  		ESP_LOGW (TAG,
-          "Schedule details to create:\n"
-          " id = %" PRIu64 "\n"
-          " name = %s\n"
-          " days_of_week = %" PRId32"\n"
-          " start_enabled = %i\n"
-          " start_time = %" PRId32"\n"
-          " end_enabled = %i\n"
-          " end_time = %" PRId32"\n"
-          " one_time = %i\n"
-          " enabled = %i\n"
-          " latitude = %f\n"
-          " longitude = %f",
-          schedule.id,
-          schedule.name,
-          schedule.days_of_week,
-          schedule.start_enabled,
-          schedule.start_time,
-          schedule.end_enabled,
-          schedule.end_time,
-          schedule.one_time,
-          schedule.enabled,
-          schedule.latitude,
-          schedule.longitude);
+int TeslaBLEVehicle::actions_setPreconditionSchedule (
+	std::string id,
+	std::string name,
+	int days_of_week,
+	int precondition_time,
+	bool one_time,
+	bool enabled,
+	float latitude,
+	float longitude)
+/*
+*   Adds a preconditioning (departure) schedule, or replaces an existing one if id is that of an existing schedule.
+*/
+{
+	if (allow_setting_schedules_ == 0)
+	{
+		ESP_LOGW (TAG, "Setting precondition schedules disabled. Set allow_setting_schedules in your yaml to non-zero and rebuild to enable.");
+		return 0;
+	}
+	if (!schedule_values_valid (days_of_week, precondition_time, 0, latitude, longitude))
+	{
+		ESP_LOGE (TAG, "Set precondition schedule command rejected, one or more of days_of_week, precondition_time, latitude and longitude out of range");
+		return TeslaBLE::TeslaBLE_Status_E_ERROR_INTERNAL;
+	}
+	uint64_t requested_id = parse_schedule_id (id);
+	if (!id.empty() and requested_id == 0)
+	{
+		ESP_LOGE (TAG, "Set precondition schedule command rejected, invalid schedule ID '%s'", id.c_str());
+		return TeslaBLE::TeslaBLE_Status_E_ERROR_INTERNAL;
+	}
+	uint64_t schedule_id = new_schedule_id (requested_id);
+	ESP_LOGI (TAG, "%s precondition schedule %" PRIu64 ": days=%d time=%d one_time=%d enabled=%d lat=%f long=%f",
+	          requested_id ? "Updating" : "Creating", schedule_id, days_of_week, precondition_time, one_time, enabled, latitude, longitude);
+	return actions_queueBuiltAction (BLE_CarServer_VehicleAction::ADD_PRECONDITION_SCHEDULE,
+		[=](CarServer_VehicleAction& vehicle_action)
+		{
+			auto& schedule = vehicle_action.vehicle_action_msg.addPreconditionScheduleAction;
+			schedule                   = CarServer_PreconditionSchedule_init_default;
+			schedule.id                = schedule_id;
+#ifdef CarServer_PreconditionSchedule_size // Only defined if the TeslaBLE library has a static (not callback) name field
+			strncpy (schedule.name, name.c_str(), sizeof(schedule.name) - 1);
+#endif
+			schedule.days_of_week      = days_of_week;
+			schedule.precondition_time = precondition_time;
+			schedule.one_time          = one_time;
+			schedule.enabled           = enabled;
+			schedule.latitude          = latitude;
+			schedule.longitude         = longitude;
+		});
+}
 
-        // Build the message (Lots of repetition here, will need tidying up.)
-        size_t message_length = 0;
-        int status = tesla_ble_client_->buildCarServerActionPayload (&actions_action_message_, static_message_buffer_, &message_length);
-        if (status != TeslaBLE::TeslaBLE_Status_E_OK)
-        {
-            ESP_LOGE (TAG, "Failed to build car server vehicle action message for setting charge schedule");
-            auto session = tesla_ble_client_->getPeer (UniversalMessage_Domain_DOMAIN_INFOTAINMENT);
-            if (status == TeslaBLE::TeslaBLE_Status_E_ERROR_INVALID_SESSION)
-            {
-            	invalidateSession (UniversalMessage_Domain_DOMAIN_INFOTAINMENT);
-            }
-            return status;
-        }
-        status = writeBLE (static_message_buffer_, message_length, ESP_GATT_WRITE_TYPE_NO_RSP, ESP_GATT_AUTH_REQ_NONE);
-        if (status != 0)
-        {
-          	ESP_LOGE (TAG, "Failed to send set charge schedule message");
-        	return status;
-        }
-        return static_cast<int>(TeslaBLE::TeslaBLE_Status_E_OK);
-      };
-      ESP_LOGW (TAG, "[%s] Adding command to queue (days_of_week = %d)", "set_charge_schedule", days_of_week);
-      placeAtFrontOfQueue (UniversalMessage_Domain_DOMAIN_INFOTAINMENT, execute_cmd, "set_charge_schedule");
-      return TeslaBLE::TeslaBLE_Status_E_OK;
-    }
+int TeslaBLEVehicle::actions_deleteSchedule (BLE_CarServer_VehicleAction action, std::string id)
+{
+	uint64_t schedule_id = parse_schedule_id (id);
+	if (schedule_id == 0)
+	{
+		ESP_LOGW (TAG, "[%s] Invalid schedule ID '%s', delete not sent", get_action_detail(action).action_str, id.c_str());
+		return TeslaBLE::TeslaBLE_Status_E_ERROR_INTERNAL;
+	}
+	return sendCarServerVehicleActionMessage (action, 0, schedule_id);
+}
+
+int TeslaBLEVehicle::actions_setScheduledDeparture (
+	bool enabled,
+	int departure_time,
+	int preconditioning_policy,
+	int off_peak_policy,
+	int off_peak_end_time)
+/*
+*   The car's single "scheduled departure". Policies are 0 = off, 1 = all week, 2 = weekdays only. Times are minutes after midnight.
+*/
+{
+	if (enabled and ((departure_time < 0) or (departure_time > 1440) or (off_peak_end_time < 0) or (off_peak_end_time > 1440) or
+	                 (preconditioning_policy < 0) or (preconditioning_policy > 2) or (off_peak_policy < 0) or (off_peak_policy > 2)))
+	{
+		ESP_LOGE (TAG, "Set scheduled departure rejected, a time or policy is out of range");
+		return TeslaBLE::TeslaBLE_Status_E_ERROR_INTERNAL;
+	}
+	return actions_queueBuiltAction (BLE_CarServer_VehicleAction::SET_SCHEDULED_DEPARTURE,
+		[=](CarServer_VehicleAction& vehicle_action)
+		{
+			auto& departure = vehicle_action.vehicle_action_msg.scheduledDepartureAction;
+			departure         = CarServer_ScheduledDepartureAction_init_default;
+			departure.enabled = enabled;
+			if (!enabled)
+				return; // Clears the scheduled departure
+			departure.departure_time          = departure_time;
+			departure.off_peak_hours_end_time = off_peak_end_time;
+			if (preconditioning_policy != 0)
+			{
+				departure.has_preconditioning_times         = true;
+				departure.preconditioning_times.which_times = (preconditioning_policy == 1) ? CarServer_PreconditioningTimes_all_week_tag
+				                                                                            : CarServer_PreconditioningTimes_weekdays_tag;
+			}
+			if (off_peak_policy != 0)
+			{
+				departure.has_off_peak_charging_times         = true;
+				departure.off_peak_charging_times.which_times = (off_peak_policy == 1) ? CarServer_OffPeakChargingTimes_all_week_tag
+				                                                                       : CarServer_OffPeakChargingTimes_weekdays_tag;
+			}
+		});
+}
+
+int TeslaBLEVehicle::actions_startPreconditioning (float temperature)
+/*
+*   Starts the climate (preconditioning) now, optionally setting the cabin temperature first (temperature <= 0 leaves it unchanged).
+*   Commands are placed at the front of the queue so the last one queued is sent first.
+*/
+{
+	sendCarServerVehicleActionMessage (BLE_CarServer_VehicleAction::SET_HVAC_SWITCH, 1);
+	if (temperature > 0)
+	{
+		if ((temperature < 15.0) or (temperature > 28.0))
+		{
+			ESP_LOGW (TAG, "Preconditioning temperature %.1f out of range 15-28, temperature not changed", temperature);
+			return 0;
+		}
+		actions_queueBuiltAction (BLE_CarServer_VehicleAction::SET_CLIMATE_TEMP,
+			[=](CarServer_VehicleAction& vehicle_action)
+			{
+				auto& adjust = vehicle_action.vehicle_action_msg.hvacTemperatureAdjustmentAction;
+				adjust                        = CarServer_HvacTemperatureAdjustmentAction_init_default;
+				adjust.driver_temp_celsius    = temperature;
+				adjust.passenger_temp_celsius = temperature;
+			});
+	}
+	return 0;
+}
 
 } // esphome
 } // tesla_ble_vehicle

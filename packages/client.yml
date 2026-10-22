@@ -70,7 +70,7 @@ tesla_ble_vehicle:
   ble_disconnected_min_time: 300 # Minimum time BLE must be disconnected before sensors are Unknwon (s)
   fast_poll_if_unlocked: 0 # if != 0, fast polls are enabled when unlocked
   wake_on_boot: 0 # != 0 wakes car on device boot
-  allow_setting_schedules: 0 # if = 0 the set_charge_schedule action will reject all requests. MUST rebuild if changed
+  allow_setting_schedules: 0 # if = 0 the set_charge_schedule and set_precondition_schedule actions reject all requests. MUST rebuild if changed
 
   is_asleep:
     id: "is_asleep"
@@ -267,6 +267,14 @@ button:
     icon: mdi:download-multiple
     on_press:
       - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::GET_CHARGE_SCHEDULE_STATE, 0);
+    disabled_by_default: true
+
+  - platform: template
+    id: btn_get_precondition_schedule_state
+    name: Get precondition schedules
+    icon: mdi:download-multiple
+    on_press:
+      - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::GET_PRECONDITION_SCHEDULE_STATE, 0);
     disabled_by_default: true
 
   - platform: template
@@ -714,14 +722,16 @@ text:
     mode: text
     update_interval: 2s
     set_action:
-      - lambda: |-
-          uint64_t id = strtoull(x.c_str(), nullptr, 10);
-          if (id == 0)
-          {
-            ESP_LOGW("client.yml", "Invalid charging schedule ID %s, schedule delete not sent", x.c_str());
-            return;
-          }
-          id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(tesla_ble_vehicle::BLE_CarServer_VehicleAction::DEL_CHARGING_SCHEDULE, 0, id);
+      - lambda: id(tesla_ble_vehicle_id)->actions_deleteSchedule (tesla_ble_vehicle::BLE_CarServer_VehicleAction::DEL_CHARGING_SCHEDULE, x);
+    disabled_by_default: true
+  - platform: template
+    name: "Delete a precondition schedule"
+    id: del_precondition_schedule
+    icon: mdi:delete-clock
+    mode: text
+    update_interval: 2s
+    set_action:
+      - lambda: id(tesla_ble_vehicle_id)->actions_deleteSchedule (tesla_ble_vehicle::BLE_CarServer_VehicleAction::DEL_PRECONDITION_SCHEDULE, x);
     disabled_by_default: true
 
 select:
@@ -788,7 +798,7 @@ api:
   actions:
     - action: set_charge_schedule
       variables:
-#        id: uint64   ## Set internally
+        schedule_id: string   # Empty creates a new schedule, an existing schedule's ID replaces (edits) it
         name: string
         days_of_week: int
         start_enabled: bool
@@ -802,7 +812,7 @@ api:
       then:
         - lambda: |-
             id(tesla_ble_vehicle_id)->actions_setChargeSchedule (
-              // id,
+              schedule_id,
               name,
               days_of_week,
               start_enabled,
@@ -814,3 +824,57 @@ api:
               latitude,
               longitude
             );
+    - action: set_precondition_schedule
+      variables:
+        schedule_id: string   # Empty creates a new schedule, an existing schedule's ID replaces (edits) it
+        name: string
+        days_of_week: int
+        precondition_time: int   # minutes after midnight
+        one_time: bool
+        enabled: bool
+        latitude: float
+        longitude: float
+      then:
+        - lambda: |-
+            id(tesla_ble_vehicle_id)->actions_setPreconditionSchedule (
+              schedule_id, name, days_of_week, precondition_time, one_time, enabled, latitude, longitude);
+    - action: delete_charge_schedule
+      variables:
+        schedule_id: string
+      then:
+        - lambda: id(tesla_ble_vehicle_id)->actions_deleteSchedule (tesla_ble_vehicle::BLE_CarServer_VehicleAction::DEL_CHARGING_SCHEDULE, schedule_id);
+    - action: delete_precondition_schedule
+      variables:
+        schedule_id: string
+      then:
+        - lambda: id(tesla_ble_vehicle_id)->actions_deleteSchedule (tesla_ble_vehicle::BLE_CarServer_VehicleAction::DEL_PRECONDITION_SCHEDULE, schedule_id);
+    - action: get_charge_schedules
+      then:
+        - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::GET_CHARGE_SCHEDULE_STATE, 0);
+    - action: get_precondition_schedules
+      then:
+        - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::GET_PRECONDITION_SCHEDULE_STATE, 0);
+    - action: set_scheduled_departure
+      variables:
+        enabled: bool                # false clears the scheduled departure (other fields ignored)
+        departure_time: int          # minutes after midnight
+        preconditioning_policy: int  # 0 = off, 1 = all week, 2 = weekdays only
+        off_peak_policy: int         # 0 = off, 1 = all week, 2 = weekdays only
+        off_peak_end_time: int       # minutes after midnight
+      then:
+        - lambda: |-
+            id(tesla_ble_vehicle_id)->actions_setScheduledDeparture (
+              enabled, departure_time, preconditioning_policy, off_peak_policy, off_peak_end_time);
+    - action: set_scheduled_charging
+      variables:
+        start_time: int   # minutes after midnight, negative disables scheduled charging
+      then:
+        - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_SCHEDULED_CHARGING, start_time);
+    - action: start_preconditioning
+      variables:
+        temperature: float   # cabin temperature in C (15-28), 0 keeps the current setting
+      then:
+        - lambda: id(tesla_ble_vehicle_id)->actions_startPreconditioning (temperature);
+    - action: stop_preconditioning
+      then:
+        - lambda: id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_HVAC_SWITCH, 0);
