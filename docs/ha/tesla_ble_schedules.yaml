@@ -165,7 +165,7 @@ script:
       days:
         name: Days
         required: true
-        default: [Mon, Tue, Wed, Thu, Fri]
+        default: [Sun, Mon, Tue, Wed, Thu, Fri, Sat]   # every day: a weekday-only default is easy to miss before a weekend trip
         selector:
           select:
             multiple: true
@@ -437,7 +437,7 @@ automation:
             {%- elif match_ch | count > 0 -%}{{ match_ch[0] -}}
             {%- elif kind == 'charge' -%}{{ {'days': 127, 'start_time': 0, 'end_time': 360, 'start_enabled': true,
                                            'end_enabled': true, 'one_time': false, 'enabled': true} -}}
-            {%- else -%}{{ {'days': 62, 'precondition_time': 420, 'one_time': false, 'enabled': true} }}{%- endif -%}
+            {%- else -%}{{ {'days': 127, 'precondition_time': 420, 'one_time': false, 'enabled': true} }}{%- endif -%}
           t1: "{{ (s.precondition_time if kind == 'precondition' else s.start_time) | int(0) }}"
           t2: "{{ s.end_time | default(360) | int(0) }}"
           on_list: >-
