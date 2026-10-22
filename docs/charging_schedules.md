@@ -1,6 +1,9 @@
 ## Charging schedules
 This project allows you to **view**, **add**, **edit** and **delete** Tesla charging schedules. Preconditioning (departure) schedules work the same way, see [preconditioning.md](./preconditioning.md). Unlike the other sensors and controls, charging schedules are handled differently and require some familiarity with Home Assistant (HA). Since many users will not need this functionality, it is documented separately.
 
+> [!TIP]
+> For a ready-made setup (sensors, scripts, a schedule editor and a dashboard for both charging and preconditioning schedules) use the Home Assistant package in [ha/](./ha/), described in [preconditioning.md](./preconditioning.md#home-assistant-package-and-dashboard). The rest of this page explains the underlying events and actions.
+
 ### Key features
 
 - Charging schedules are returned to Home Assistant as an **event**, rather than a sensor. This is because a single schedule list can exceed the 255-character limit of an ESPHome text sensor. The event data can then be captured into a Home Assistant entity (this guide demonstrates capturing it in a number sensor).

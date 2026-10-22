@@ -45,126 +45,41 @@ The schedule location matters: the car only runs a schedule when it is parked ne
 ### Scheduled departure (older single setting)
 `set_scheduled_departure` fields: `enabled` (false clears it), `departure_time` (minutes after midnight), `preconditioning_policy` and `off_peak_policy` (0 = off, 1 = all week, 2 = weekdays only), `off_peak_end_time` (minutes after midnight). Cars on recent software use preconditioning schedules instead.
 
-### Home Assistant package
-The package below adds two sensors holding the schedule lists, and scripts to add/edit/delete schedules with friendly fields (time picker, day names, zone). Save it as `packages/tesla_schedules.yaml` in your HA config (with `homeassistant: packages: !include_dir_named packages` in `configuration.yaml`), and replace `tesla_ble` if your device name differs.
+### Home Assistant package and dashboard
+Everything needed on the Home Assistant side is in two files you can paste as they are:
 
-```yaml
-template:
-  - triggers:
-      - trigger: event
-        event_type: esphome.tesla_schedules_updated
-    sensor:
-      - name: Tesla charge schedules
-        unique_id: tesla_charge_schedules
-        state: "{{ trigger.event.data.count }}"
-        attributes:
-          schedules: "{{ (trigger.event.data.schedules | from_json).charge_schedules }}"
-  - triggers:
-      - trigger: event
-        event_type: esphome.tesla_precondition_schedules_updated
-    sensor:
-      - name: Tesla precondition schedules
-        unique_id: tesla_precondition_schedules
-        state: "{{ trigger.event.data.count }}"
-        attributes:
-          schedules: "{{ (trigger.event.data.schedules | from_json).precondition_schedules }}"
+| File | What it contains |
+| --- | --- |
+| [ha/tesla_ble_schedules.yaml](./ha/tesla_ble_schedules.yaml) | A [package](https://www.home-assistant.io/docs/configuration/packages/): the two schedule sensors, the scripts, and the schedule editor (helpers and two automations). Install steps are at the top of the file. |
+| [ha/tesla_ble_dashboard.yaml](./ha/tesla_ble_dashboard.yaml) | A summary card for your car view and an editor subview. Only built-in cards are used. |
 
-script:
-  tesla_set_precondition_schedule:
-    alias: Tesla - add or edit precondition schedule
-    mode: queued
-    fields:
-      schedule_id:
-        name: Schedule ID
-        description: Leave empty to add a new schedule, or give an existing ID to edit it
-        selector:
-          text:
-      time:
-        name: Ready at
-        required: true
-        selector:
-          time:
-      days:
-        name: Days
-        required: true
-        default: [Mon, Tue, Wed, Thu, Fri]
-        selector:
-          select:
-            multiple: true
-            options: [Sun, Mon, Tue, Wed, Thu, Fri, Sat]
-      one_time:
-        name: One time
-        default: false
-        selector:
-          boolean:
-      enabled:
-        name: Enabled
-        default: true
-        selector:
-          boolean:
-      location:
-        name: Location
-        default: zone.home
-        selector:
-          entity:
-            domain: zone
-    sequence:
-      - variables:
-          day_bits: {Sun: 1, Mon: 2, Tue: 4, Wed: 8, Thu: 16, Fri: 32, Sat: 64}
-          zone: "{{ location | default('zone.home') }}"
-      - action: esphome.tesla_ble_set_precondition_schedule
-        data:
-          schedule_id: "{{ schedule_id | default('') }}"
-          name: ""
-          days_of_week: >-
-            {% set ns = namespace(bits=0) %}{% for d in days %}{% set ns.bits = ns.bits + day_bits[d] %}{% endfor %}{{ ns.bits }}
-          precondition_time: "{{ (time.split(':')[0] | int) * 60 + (time.split(':')[1] | int) }}"
-          one_time: "{{ one_time | default(false) }}"
-          enabled: "{{ enabled | default(true) }}"
-          latitude: "{{ state_attr(zone, 'latitude') | float }}"
-          longitude: "{{ state_attr(zone, 'longitude') | float }}"
+Both assume the ESPHome device name `tesla-ble` (entities `*.tesla_ble_*`, actions `esphome.tesla_ble_*`). If yours differs, search-and-replace `tesla_ble_` in both files.
 
-  tesla_delete_precondition_schedule:
-    alias: Tesla - delete precondition schedule
-    fields:
-      schedule_id:
-        name: Schedule ID
-        required: true
-        selector:
-          text:
-    sequence:
-      - action: esphome.tesla_ble_delete_precondition_schedule
-        data:
-          schedule_id: "{{ schedule_id }}"
+#### Sensors
+- **Tesla charge schedules** / **Tesla precondition schedules**: the state is the number of schedules; the `schedules` attribute holds the list exactly as the car reports it (see the event fields above). They update whenever the lists are read, which happens automatically after every add, edit or delete.
 
-  tesla_precondition_now:
-    alias: Tesla - precondition now
-    fields:
-      temperature:
-        name: Temperature
-        default: 21
-        selector:
-          number:
-            min: 15
-            max: 28
-            step: 0.5
-            unit_of_measurement: °C
-    sequence:
-      - action: esphome.tesla_ble_start_preconditioning
-        data:
-          temperature: "{{ temperature | default(0) }}"
-```
+#### Scripts
+All scripts that talk to the car call **Tesla - ensure awake** first. It presses **Wake up** if the car is asleep, waits up to 60 s for **Asleep** to turn off, and stops with an error if the car does not wake, so nothing is sent to a sleeping car.
 
-To edit a schedule, copy its `id` from the sensor's `schedules` attribute into the script's **Schedule ID** field and change the other fields. Enabling/disabling a schedule is an edit with `enabled` changed.
+| Script | Use |
+| --- | --- |
+| `script.tesla_ensure_awake` | Wake the car and wait for it (used by all the others). |
+| `script.tesla_refresh_schedules` | Read both schedule lists. |
+| `script.tesla_precondition_now` | Start preconditioning now at a given temperature. |
+| `script.tesla_set_precondition_schedule` | Add, or edit by `schedule_id`, a preconditioning schedule: time, day names, one time, enabled, location (zone, or latitude/longitude). |
+| `script.tesla_set_charge_schedule` | The same for a charging schedule, with start/end times. |
+| `script.tesla_delete_schedule` | Delete one schedule (`kind` + `schedule_id`). |
 
-#### Displaying the schedules
-```yaml
-type: markdown
-title: Precondition schedules
-content: >
-  | ID | Days | Ready at | Enabled | One-time |
-  |:--:|:--:|:--:|:--:|:--:|
-  {% for s in state_attr('sensor.tesla_precondition_schedules', 'schedules') or [] -%}
-  | {{ s.id }} | {{ s['*days'] }} | {{ s['*precondition_time'] }} | {{ '✅' if s.enabled else '❌' }} | {{ '✅' if s.one_time else '❌' }} |
-  {% endfor %}
-```
+These are also the building blocks for your own automations, for example adding a one-time preconditioning schedule from a calendar event.
+
+#### Schedule editor
+The dashboard subview lets you edit schedules without knowing their IDs:
+
+1. Pick a schedule in the **Schedule** dropdown (entries look like `🌡️ 07:30 · Mon, Tue, Wed, Thu, Fri · Weekly · #1792681416`), or pick **➕ New precondition schedule** / **➕ New charge schedule**.
+2. The fields below fill in with its values: time(s), one time, enabled and a toggle per day.
+3. **Save to car** edits the selected schedule (it keeps its location) or adds the new one at Home. **Delete selected** removes only the selected schedule, after a confirmation.
+
+How it works: the *sync list* automation rebuilds the dropdown whenever a schedule sensor changes, and keeps the current selection if it still exists. The *load selection* automation copies the picked schedule into the helpers. The schedule ID is the `#…` suffix of the dropdown entry, so there is no separate ID field to get out of step.
+
+> [!NOTE]
+> It is not yet confirmed whether the car deletes a one-time schedule after it has run, or keeps it disabled. If it keeps them, delete old ones now and then: the list is limited to about ten schedules of each type (see above).

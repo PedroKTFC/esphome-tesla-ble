@@ -1,0 +1,290 @@
+# =====================================================================================================
+# Tesla BLE - example dashboard for the schedules package (docs/ha/tesla_ble_schedules.yaml)
+#
+# Two parts, both standard Home Assistant cards (no custom cards needed):
+#   1. SUMMARY CARD - add to any view (edit dashboard > add card > Manual, paste the card below).
+#      Shows both schedule lists, a link to the editor, Refresh, Precondition now and status rows.
+#   2. EDITOR SUBVIEW - edit dashboard > three dots > Raw configuration editor, paste the view under `views:`.
+#      If your main car view is not at /lovelace/car, change `back_path`; if the dashboard is not the
+#      default one, change `/lovelace/car-schedules` in the summary card's weblink.
+#
+# Device name assumed `tesla-ble` (binary_sensor.tesla_ble_*). Search-and-replace `tesla_ble_` if different.
+# =====================================================================================================
+
+# ---------------------------------------------------------------------------------- 1. SUMMARY CARD
+type: vertical-stack
+cards:
+- type: markdown
+  title: Schedules
+  content: |-
+    {%- macro loc(s) -%}{{ 'Home' if distance(s.latitude, s.longitude, 'zone.home') < 0.5 else s.latitude ~ ', ' ~ s.longitude }}{%- endmacro -%}
+    {%- set ch = state_attr('sensor.tesla_charge_schedules', 'schedules') -%}
+    {%- set pre = state_attr('sensor.tesla_precondition_schedules', 'schedules') -%}
+    ### 🌡️ Preconditioning
+
+    {% if pre is none or pre is string %}_Not read yet: tap Refresh_
+    {% elif pre | count == 0 %}_No schedules_
+    {% else %}| Ready at | Days | Repeat | On | Where |
+    |:--|:--|:--|:--:|:--|
+    {% for s in pre | sort(attribute='precondition_time') -%}
+    | **{{ s['*precondition_time'] }}** | {{ s['*days'] }} | {{ 'Once' if s.one_time else 'Weekly' }} | {{ '✅' if s.enabled else '⏸️' }} | {{ loc(s) }} |
+    {% endfor %}{% endif %}
+
+    ### 🔌 Charging
+
+    {% if ch is none or ch is string %}_Not read yet: tap Refresh_
+    {% elif ch | count == 0 %}_No schedules_
+    {% else %}| Start | End | Days | Repeat | On | Where |
+    |:--|:--|:--|:--|:--:|:--|
+    {% for s in ch | sort(attribute='start_time') -%}
+    | **{{ s['*start_time'] if s.start_enabled else '–' }}** | {{ s['*end_time'] if s.end_enabled else '–' }} | {{ s['*days'] }} | {{ 'Once' if s.one_time else 'Weekly' }} | {{ '✅' if s.enabled else '⏸️' }} | {{ loc(s) }} |
+    {% endfor %}{% endif %}
+
+    <small>Read {{ relative_time(states.sensor.tesla_precondition_schedules.last_reported) if states.sensor.tesla_precondition_schedules is not none else 'never' }} ago</small>
+- type: entities
+  show_header_toggle: false
+  state_color: true
+  entities:
+  - type: weblink
+    name: Edit schedules
+    url: /lovelace/car-schedules
+    icon: mdi:calendar-edit
+  - type: button
+    name: Refresh schedules
+    icon: mdi:refresh
+    action_name: Refresh
+    tap_action:
+      action: perform-action
+      perform_action: script.tesla_refresh_schedules
+  - entity: script.tesla_precondition_now
+    name: Precondition now
+    icon: mdi:car-defrost-front
+    tap_action:
+      action: more-info
+  - type: divider
+  - entity: binary_sensor.tesla_ble_preconditioning
+    name: Preconditioning
+    icon: mdi:car-defrost-front
+  - entity: binary_sensor.tesla_ble_battery_heater
+    name: Battery heater
+    icon: mdi:battery-heart-variant
+  - entity: binary_sensor.tesla_ble_climate
+    name: Climate
+    icon: mdi:fan
+  - entity: binary_sensor.tesla_ble_asleep
+    name: Asleep
+    icon: mdi:sleep
+
+# -------------------------------------------------------------------------------- 2. EDITOR SUBVIEW
+- title: Car schedules
+  path: car-schedules
+  icon: mdi:car-clock
+  type: sections
+  max_columns: 2
+  subview: true
+  back_path: /lovelace/car
+  sections:
+  - type: grid
+    cards:
+    - type: heading
+      heading: Current schedules
+      icon: mdi:calendar-clock
+      badges:
+      - type: button
+        icon: mdi:refresh
+        text: Refresh
+        tap_action:
+          action: perform-action
+          perform_action: script.tesla_refresh_schedules
+    - type: markdown
+      content: |-
+        {%- macro loc(s) -%}{{ 'Home' if distance(s.latitude, s.longitude, 'zone.home') < 0.5 else s.latitude ~ ', ' ~ s.longitude }}{%- endmacro -%}
+        {%- set ch = state_attr('sensor.tesla_charge_schedules', 'schedules') -%}
+        {%- set pre = state_attr('sensor.tesla_precondition_schedules', 'schedules') -%}
+        ### 🌡️ Preconditioning
+
+        {% if pre is none or pre is string %}_Not read yet: tap Refresh_
+        {% elif pre | count == 0 %}_No schedules_
+        {% else %}| Ready at | Days | Repeat | On | Where |
+        |:--|:--|:--|:--:|:--|
+        {% for s in pre | sort(attribute='precondition_time') -%}
+        | **{{ s['*precondition_time'] }}** | {{ s['*days'] }} | {{ 'Once' if s.one_time else 'Weekly' }} | {{ '✅' if s.enabled else '⏸️' }} | {{ loc(s) }} |
+        {% endfor %}{% endif %}
+
+        ### 🔌 Charging
+
+        {% if ch is none or ch is string %}_Not read yet: tap Refresh_
+        {% elif ch | count == 0 %}_No schedules_
+        {% else %}| Start | End | Days | Repeat | On | Where |
+        |:--|:--|:--|:--|:--:|:--|
+        {% for s in ch | sort(attribute='start_time') -%}
+        | **{{ s['*start_time'] if s.start_enabled else '–' }}** | {{ s['*end_time'] if s.end_enabled else '–' }} | {{ s['*days'] }} | {{ 'Once' if s.one_time else 'Weekly' }} | {{ '✅' if s.enabled else '⏸️' }} | {{ loc(s) }} |
+        {% endfor %}{% endif %}
+
+        <small>Read {{ relative_time(states.sensor.tesla_precondition_schedules.last_reported) if states.sensor.tesla_precondition_schedules is not none else 'never' }} ago</small>
+
+        <small>Pick a schedule in <b>Edit schedule</b> to change or delete it, or pick a <b>New</b> entry to add one.</small>
+  - type: grid
+    cards:
+    - type: heading
+      heading: Edit schedule
+      icon: mdi:calendar-edit
+    - type: tile
+      entity: input_select.tesla_schedule_select
+      name: Schedule
+      hide_state: true
+      features:
+      - type: select-options
+      features_position: bottom
+      grid_options:
+        columns: full
+    - type: entities
+      show_header_toggle: false
+      state_color: true
+      grid_options:
+        columns: full
+      entities:
+      - type: conditional
+        conditions:
+        - entity: input_select.tesla_schedule_type
+          state: precondition
+        row:
+          entity: input_datetime.tesla_schedule_time
+          name: Ready at
+      - type: conditional
+        conditions:
+        - entity: input_select.tesla_schedule_type
+          state: charge
+        row:
+          entity: input_datetime.tesla_schedule_time
+          name: Start
+      - type: conditional
+        conditions:
+        - entity: input_select.tesla_schedule_type
+          state: charge
+        row:
+          entity: input_boolean.tesla_schedule_start_enabled
+          name: Use start time
+      - type: conditional
+        conditions:
+        - entity: input_select.tesla_schedule_type
+          state: charge
+        row:
+          entity: input_datetime.tesla_schedule_end
+          name: End
+      - type: conditional
+        conditions:
+        - entity: input_select.tesla_schedule_type
+          state: charge
+        row:
+          entity: input_boolean.tesla_schedule_end_enabled
+          name: Use end time
+      - entity: input_boolean.tesla_schedule_one_time
+        name: One time only
+      - entity: input_boolean.tesla_schedule_enabled
+        name: Enabled
+    - type: tile
+      entity: input_boolean.tesla_schedule_day_mon
+      name: Mon
+      hide_state: true
+      vertical: true
+      color: blue
+      tap_action:
+        action: toggle
+      grid_options:
+        columns: 3
+        rows: 2
+    - type: tile
+      entity: input_boolean.tesla_schedule_day_tue
+      name: Tue
+      hide_state: true
+      vertical: true
+      color: blue
+      tap_action:
+        action: toggle
+      grid_options:
+        columns: 3
+        rows: 2
+    - type: tile
+      entity: input_boolean.tesla_schedule_day_wed
+      name: Wed
+      hide_state: true
+      vertical: true
+      color: blue
+      tap_action:
+        action: toggle
+      grid_options:
+        columns: 3
+        rows: 2
+    - type: tile
+      entity: input_boolean.tesla_schedule_day_thu
+      name: Thu
+      hide_state: true
+      vertical: true
+      color: blue
+      tap_action:
+        action: toggle
+      grid_options:
+        columns: 3
+        rows: 2
+    - type: tile
+      entity: input_boolean.tesla_schedule_day_fri
+      name: Fri
+      hide_state: true
+      vertical: true
+      color: blue
+      tap_action:
+        action: toggle
+      grid_options:
+        columns: 3
+        rows: 2
+    - type: tile
+      entity: input_boolean.tesla_schedule_day_sat
+      name: Sat
+      hide_state: true
+      vertical: true
+      color: blue
+      tap_action:
+        action: toggle
+      grid_options:
+        columns: 3
+        rows: 2
+    - type: tile
+      entity: input_boolean.tesla_schedule_day_sun
+      name: Sun
+      hide_state: true
+      vertical: true
+      color: blue
+      tap_action:
+        action: toggle
+      grid_options:
+        columns: 3
+        rows: 2
+    - type: entities
+      show_header_toggle: false
+      grid_options:
+        columns: full
+      entities:
+      - type: button
+        name: Save to car
+        icon: mdi:content-save
+        action_name: Save
+        tap_action:
+          action: perform-action
+          perform_action: script.tesla_schedule_editor_save
+      - type: conditional
+        conditions:
+        - entity: input_select.tesla_schedule_select
+          state_not:
+          - ➕ New precondition schedule
+          - ➕ New charge schedule
+        row:
+          type: button
+          name: Delete selected
+          icon: mdi:delete
+          action_name: Delete
+          tap_action:
+            action: perform-action
+            perform_action: script.tesla_schedule_editor_delete
+            confirmation:
+              text: Delete the selected schedule from the car? Other schedules are not affected.
