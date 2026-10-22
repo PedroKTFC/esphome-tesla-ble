@@ -49,6 +49,9 @@ esphome:
               "\n*** See tesla-ble.example.yml for details.                                                 ***"
               "\n***                                                                                        ***"
               "\n**********************************************************************************************");
+      # The BLE client is always enabled at boot, but its switch only reports state once a connection completes or drops
+      # (and ignores restore_mode), so it shows Off after a reboot. Publish the real state (runs after setup).
+      - lambda: id(sw_ble_connection).publish_state(id(ble_tesla_id)->enabled);
 
 ble_client:
   - mac_address: $ble_mac_address
