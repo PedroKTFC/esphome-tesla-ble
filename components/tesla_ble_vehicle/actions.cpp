@@ -60,6 +60,10 @@ int TeslaBLEVehicle::actions_buildCarServerGetVehicleDataMessage (
 		vehicle_action_msg_.getVehicleData.getChargeScheduleState     = CarServer_GetChargeScheduleState_init_default;
 		vehicle_action_msg_.getVehicleData.has_getChargeScheduleState = true;
 		break;
+	case CarServer_GetVehicleData_getPreconditioningScheduleState_tag:
+		vehicle_action_msg_.getVehicleData.getPreconditioningScheduleState     = CarServer_GetPreconditioningScheduleState_init_default;
+		vehicle_action_msg_.getVehicleData.has_getPreconditioningScheduleState = true;
+		break;
 	default:
 		ESP_LOGE (TAG, "Invalid which_get type, action message not built");
 		return TeslaBLE::TeslaBLE_Status_E_ERROR_INTERNAL;
