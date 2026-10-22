@@ -88,6 +88,8 @@ There are two categories, those available even when asleep and those only when a
   - Charger phases (1 or 3). Disabled by default.
   - Charging state (eg Stopped, Charging, Complete)
   - Climate on/off
+  - Battery heater on/off
+  - Preconditioning on/off
   - Climate temperature (°C). Note this is actually the driver's temperature setting.
   - Current limit setting (Amps)
   - Defrost state on/off

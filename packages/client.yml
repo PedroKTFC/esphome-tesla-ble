@@ -147,6 +147,12 @@ tesla_ble_vehicle:
   is_climate_on:
     id: "is_climate_on"
     name: "Climate"
+  is_battery_heater_on:
+    id: "is_battery_heater_on"
+    name: "Battery heater"
+  is_preconditioning:
+    id: "is_preconditioning"
+    name: "Preconditioning"
   internal_temp:
     id: "internal_temp"
     name: "Interior"

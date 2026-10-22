@@ -249,6 +249,8 @@ namespace esphome
             IsBootOpen,
             IsFrunkOpen,
             IsClimateOn,
+            IsBatteryHeaterOn,
+            IsPreconditioning,
             WindowsState,
             Count
         };

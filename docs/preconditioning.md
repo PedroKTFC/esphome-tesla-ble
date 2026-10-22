@@ -17,6 +17,13 @@ In the action names below, `tesla_ble` is your device name with `-` replaced by 
 
 The existing **Climate** switch and **Defrost** (max preconditioning) switch also still work.
 
+### Battery warming
+Tesla's protocol has no separate "warm the battery" command (neither BLE nor the Fleet API). The car heats the battery itself when it preconditions in the cold: preconditioning schedules, scheduled departure, climate on, and most strongly **Defrost** (max preconditioning). Two binary sensors show what the car is actually doing:
+- **Battery heater**: on while the battery heater runs.
+- **Preconditioning**: on while the car is preconditioning (cabin and/or battery).
+
+Both come from the climate data that is polled anyway, so they add no extra traffic to the car.
+
 ### Preconditioning schedules
 Like charging schedules, setting is only allowed when the build-time option `allow_setting_schedules` is non-zero (see [charging_schedules.md](./charging_schedules.md)). Reading and deleting are always allowed.
 

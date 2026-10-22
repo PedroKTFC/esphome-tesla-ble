@@ -1899,6 +1899,12 @@ namespace esphome
             {
               ESP_LOGI (TAG, "No data to set climate on/off");
             }
+            // Absent means off: otherwise a sensor would stay on after the car stops reporting the flag
+            const auto& climate_state_ = carserver_response.response_msg.vehicleData.climate_state;
+            publishSensor (BinarySensorId::IsBatteryHeaterOn,
+                           climate_state_.which_optional_battery_heater ? climate_state_.optional_battery_heater.battery_heater : false);
+            publishSensor (BinarySensorId::IsPreconditioning,
+                           climate_state_.which_optional_is_preconditioning ? climate_state_.optional_is_preconditioning.is_preconditioning : false);
             if (carserver_response.response_msg.vehicleData.climate_state.which_optional_inside_temp_celsius)
             {
               publishSensor (NumericSensorId::InternalTemp, carserver_response.response_msg.vehicleData.climate_state.optional_inside_temp_celsius.inside_temp_celsius);
