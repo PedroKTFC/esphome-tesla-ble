@@ -807,6 +807,33 @@ api:
   actions:
     - action: set_charge_schedule
       variables:
+        name: string
+        days_of_week: int
+        start_enabled: bool
+        start_time: int
+        end_enabled: bool
+        end_time: int
+        one_time: bool
+        enabled: bool
+        latitude: float
+        longitude: float
+      then:
+        - lambda: |-
+            id(tesla_ble_vehicle_id)->actions_setChargeSchedule (
+              "",   // always a new schedule
+              name,
+              days_of_week,
+              start_enabled,
+              start_time,
+              end_enabled,
+              end_time,
+              one_time,
+              enabled,
+              latitude,
+              longitude
+            );
+    - action: edit_charge_schedule   # as set_charge_schedule, plus schedule_id
+      variables:
         schedule_id: string   # Empty creates a new schedule, an existing schedule's ID replaces (edits) it
         name: string
         days_of_week: int

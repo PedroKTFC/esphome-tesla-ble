@@ -79,8 +79,7 @@ The ability to create charging schedules is not enabled by default. The build-ti
   allow_setting_schedules: 0 # if = 0 the set_charge_schedule action will reject all requests. MUST rebuild if changed
 ```
 #### Set charge schedule action
-The action to set a charge schedule is named **esphome.<your_friendly_name>_set_charge_schedule**. It provides all the fields of the Tesla message. They are as follows:
-- schedule_id - leave empty to create a new schedule (the ID is then set internally from the current time). To **edit** an existing schedule, give its ID (from the schedule list) and the schedule is replaced with the values given.
+The action to set a charge schedule is named **esphome.<your_friendly_name>_set_charge_schedule**. It provides all the fields of the Tesla message apart from ID (which is set internally from the current time), so it always adds a new schedule. They are as follows:
 - name - doesn't seem to be used
 - days_of_week - 7 bit bit mask
 - start_enabled - boolean
@@ -93,6 +92,9 @@ The action to set a charge schedule is named **esphome.<your_friendly_name>_set_
 - longitude - float
 
 `days_of_week` bits are Sun = 1, Mon = 2, Tue = 4, Wed = 8, Thu = 16, Fri = 32, Sat = 64 (so Mon-Fri = 62, every day = 127).
+
+#### Edit charge schedule action
+**esphome.<your_friendly_name>_edit_charge_schedule** takes the same fields plus **schedule_id**. Give the ID of an existing schedule (from the schedule list) and that schedule is replaced with the values given; leave it empty to add a new schedule. The same build-time option applies.
 
 Some basic validation is performed and a request will be rejected if this validation fails (with a helpful message in the log). Validation includes days_of_week bit mask in range, times minutes do not exceed 24 hours, latitude and longitude are on the globe.
 

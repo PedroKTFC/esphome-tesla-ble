@@ -249,7 +249,7 @@ script:
     sequence:
       - variables: *schedule_common_vars
       - action: script.tesla_ensure_awake
-      - action: esphome.tesla_ble_set_charge_schedule
+      - action: esphome.tesla_ble_edit_charge_schedule
         data:
           schedule_id: "{{ schedule_id | default('') }}"
           name: ""
