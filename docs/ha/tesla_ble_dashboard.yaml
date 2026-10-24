@@ -40,7 +40,10 @@ cards:
     | **{{ s['*start_time'] if s.start_enabled else '–' }}** | {{ s['*end_time'] if s.end_enabled else '–' }} | {{ s['*days'] }} | {{ 'Once' if s.one_time else 'Weekly' }} | {{ '✅' if s.enabled else '⏸️' }} | {{ loc(s) }} |
     {% endfor %}{% endif %}
 
-    <small>Read {{ relative_time(states.sensor.tesla_precondition_schedules.last_reported) if states.sensor.tesla_precondition_schedules is not none else 'never' }} ago</small>
+    {%- set t = state_attr('sensor.tesla_precondition_schedules', 'read_at') | as_datetime(none) %}
+    {%- if t is none %}⚠️ **Not read from the car yet: tap Refresh**
+    {%- elif now() - t > timedelta(hours=6) %}⚠️ **Read {{ relative_time(t) }} ago: may be out of date, tap Refresh**
+    {%- else %}<small>Read {{ relative_time(t) }} ago</small>{% endif %}
 - type: entities
   show_header_toggle: false
   state_color: true
@@ -121,7 +124,10 @@ cards:
         | **{{ s['*start_time'] if s.start_enabled else '–' }}** | {{ s['*end_time'] if s.end_enabled else '–' }} | {{ s['*days'] }} | {{ 'Once' if s.one_time else 'Weekly' }} | {{ '✅' if s.enabled else '⏸️' }} | {{ loc(s) }} |
         {% endfor %}{% endif %}
 
-        <small>Read {{ relative_time(states.sensor.tesla_precondition_schedules.last_reported) if states.sensor.tesla_precondition_schedules is not none else 'never' }} ago</small>
+        {%- set t = state_attr('sensor.tesla_precondition_schedules', 'read_at') | as_datetime(none) %}
+        {%- if t is none %}⚠️ **Not read from the car yet: tap Refresh**
+        {%- elif now() - t > timedelta(hours=6) %}⚠️ **Read {{ relative_time(t) }} ago: may be out of date, tap Refresh**
+        {%- else %}<small>Read {{ relative_time(t) }} ago</small>{% endif %}
 
         <small>Pick a schedule in <b>Edit schedule</b> to change or delete it, or pick a <b>New</b> entry to add one.</small>
   - type: grid

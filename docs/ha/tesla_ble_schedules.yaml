@@ -2,8 +2,8 @@
 # Tesla BLE - schedules and preconditioning for Home Assistant (single package file)
 #
 # What you get:
-#   - sensor.tesla_charge_schedules / sensor.tesla_precondition_schedules (state = count, attribute
-#     `schedules` = the list read from the car)
+#   - sensor.tesla_charge_schedules / sensor.tesla_precondition_schedules (state = count, attributes
+#     `schedules` = the list read from the car, `read_at` = when it was read)
 #   - scripts to wake the car, refresh the lists, add/edit/delete schedules and precondition now
 #   - a schedule editor (helpers + 2 automations) used by docs/ha/tesla_ble_dashboard.yaml
 #
@@ -32,6 +32,7 @@ template:
         state: "{{ trigger.event.data.count }}"
         attributes:
           schedules: "{{ (trigger.event.data.schedules | from_json).charge_schedules }}"
+          read_at: "{{ now().isoformat() }}"   # when the car's list arrived; kept across HA restarts
   - triggers:
       - trigger: event
         event_type: esphome.tesla_precondition_schedules_updated
@@ -42,6 +43,7 @@ template:
         state: "{{ trigger.event.data.count }}"
         attributes:
           schedules: "{{ (trigger.event.data.schedules | from_json).precondition_schedules }}"
+          read_at: "{{ now().isoformat() }}"   # when the car's list arrived; kept across HA restarts
 
 # ----------------------------------------------------------------------------- schedule editor helpers
 input_select:
