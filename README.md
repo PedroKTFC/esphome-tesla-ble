@@ -218,6 +218,16 @@ The following is the original method. I have never tried this and I do not maint
 
 For an example ESPHome dashboard, see [`tesla-ble-example.yml`](./tesla-ble.example.yml). Please always start from this. I strongly recommend building this using the ESPHome Device Builder add-on in Home Assistant as this makes building and re-building (eg for updates) much easier.
 
+### Build options
+
+There are a few substitutions that can be changed to affect the build. The following table lists the key ones. [`tesla-ble-example.yml`](./tesla-ble.example.yml) shows how they are used.
+| Name | Default | Supported options | Description |
+| --- | --- | --- | --- |
+|`ota_mode`|password|password, encryption|Enables builds to use the encryption option, thereby saving memory, or the password option. For historical reasons password is the current default. Used in:<br>`ota:1`<br>`  - !include ota-${ota_mode}.yml`|
+|`board`|esp32dev|See the [`wiki`](https://github.com/PedroKTFC/esphome-tesla-ble/wiki/How-to-build-for-different-board-types) for examples|Enables builds to use a different board type. Used in:<br>`esp32:`<br>`  board: $board`|
+|`variant`|ESP32|See the [`wiki`](https://github.com/PedroKTFC/esphome-tesla-ble/wiki/How-to-build-for-different-board-types) for examples|Enables builds to use a different variant type. Used in:<br>`esp32:`<br>`  variant: $variant`|
+
+
 ### Board types
 
 Various board types have been shown to work with this project. Always start from [`tesla-ble-example.yml`](./tesla-ble.example.yml). Some boards require additional/changed yaml, please refer to the [`wiki`](https://github.com/PedroKTFC/esphome-tesla-ble/wiki/How-to-build-for-different-board-types).
