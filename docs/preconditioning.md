@@ -37,6 +37,8 @@ There is also a **Get precondition schedules** button and a **Delete a precondit
 
 After a set or delete the list is read back automatically. The list arrives as the event `esphome.tesla_precondition_schedules_updated` with fields `count`, `schedules` (JSON: `{"precondition_schedules": [...]}`), `version` and `comment`. Each schedule has `id`, `name`, `days`, `*days`, `precondition_time`, `*precondition_time` (HH:MM), `one_time`, `enabled`, `latitude`, `longitude`. Fields starting with `*` are derived.
 
+A schedule only runs when the car is parked at its location. The Tesla app sets that to wherever the car is when the schedule is made, and doesn't show it. The example card and editor show it as the name of the matching Home Assistant zone (within the zone's radius, or 500 m for small zones), or as *Other, 47 km from Home*.
+
 The schedule location matters: the car only runs a schedule when it is parked near that latitude/longitude, so use the location where the car will be (eg `zone.home`).
 
 > [!NOTE]
@@ -77,7 +79,8 @@ The dashboard subview lets you edit schedules without knowing their IDs:
 
 1. Pick a schedule in the **Schedule** dropdown (entries look like `🌡️ 07:30 · Mon, Tue, Wed, Thu, Fri · Weekly · #1792681416`), or pick **➕ New precondition schedule** / **➕ New charge schedule**.
 2. The fields below fill in with its values: time(s), one time, enabled and a toggle per day.
-3. **Save to car** edits the selected schedule (it keeps its location) or adds the new one at Home. **Delete selected** removes only the selected schedule, after a confirmation.
+3. Pick the **Location**: any of your Home Assistant zones (Home first). A schedule outside every zone also offers **📍 Keep: Other, 47 km from Home**, so editing it doesn't move it.
+4. **Save to car** edits the selected schedule or adds the new one. **Delete selected** removes only the selected schedule, after a confirmation.
 
 How it works: the *sync list* automation rebuilds the dropdown whenever a schedule sensor changes, and keeps the current selection if it still exists. The *load selection* automation copies the picked schedule into the helpers. The schedule ID is the `#…` suffix of the dropdown entry, so there is no separate ID field to get out of step.
 

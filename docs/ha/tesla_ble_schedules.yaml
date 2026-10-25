@@ -61,6 +61,13 @@ input_select:
     options:
       - precondition
       - charge
+  tesla_schedule_location:
+    name: Tesla schedule location
+    icon: mdi:map-marker
+    # Filled by the "load selection" automation: your zones (Home first), plus "📍 Keep: …" for a
+    # schedule that is not in any zone, so editing it does not move it.
+    options:
+      - Home
 
 input_datetime:
   tesla_schedule_time:
@@ -300,8 +307,8 @@ script:
   tesla_schedule_editor_save:
     alias: Tesla schedule editor - save
     description: >-
-      Saves the schedule in the editor to the car: edits the selected one, or adds a new one at Home.
-      An edited schedule keeps its original location.
+      Saves the schedule in the editor to the car: edits the selected one, or adds a new one. The location
+      is the zone picked in the editor, or the schedule's own location when "📍 Keep: …" is picked.
     icon: mdi:content-save
     mode: single
     sequence:
@@ -319,14 +326,21 @@ script:
             {%- set c = state_attr('sensor.tesla_charge_schedules', 'schedules') -%}
             {%- set all = (p if p is list else []) + (c if c is list else []) -%}
             {{- (all | selectattr('id', 'eq', sid | int(0)) | list | first) | default({}) -}}
+          loc_sel: "{{ states('input_select.tesla_schedule_location') }}"
+          loc_zone: >-
+            {{- states.zone | selectattr('name', 'eq', loc_sel) | map(attribute='entity_id') | first | default('') -}}
           common:
             schedule_id: "{{ sid }}"
             time: "{{ states('input_datetime.tesla_schedule_time') }}"
             days: "{{ days }}"
             one_time: "{{ is_state('input_boolean.tesla_schedule_one_time', 'on') }}"
             enabled: "{{ is_state('input_boolean.tesla_schedule_enabled', 'on') }}"
-            latitude: "{{ existing.latitude | default(state_attr('zone.home', 'latitude')) }}"
-            longitude: "{{ existing.longitude | default(state_attr('zone.home', 'longitude')) }}"
+            latitude: >-
+              {{- state_attr(loc_zone, 'latitude') if loc_zone
+                  else existing.latitude | default(state_attr('zone.home', 'latitude')) -}}
+            longitude: >-
+              {{- state_attr(loc_zone, 'longitude') if loc_zone
+                  else existing.longitude | default(state_attr('zone.home', 'longitude')) -}}
       - if:
           - "{{ days | count == 0 }}"
         then:
@@ -419,15 +433,25 @@ automation:
           ch: >-
             {%- set c = state_attr('sensor.tesla_charge_schedules', 'schedules') -%}{{ c if c is list else [] -}}
           opts: >-
+            {%- macro where(s) -%}
+            {%- set z = namespace(best='', d=99999) -%}
+            {%- for zone in states.zone if zone.attributes.latitude is defined -%}
+            {%- set d = distance(s.latitude, s.longitude, zone.entity_id) -%}
+            {%- if d is number and d <= [zone.attributes.radius | default(100) / 1000, 0.5] | max and d < z.d -%}
+            {%- set z.best = zone.name -%}{%- set z.d = d -%}{%- endif -%}{%- endfor -%}
+            {%- set dh = distance(s.latitude, s.longitude, 'zone.home') -%}
+            {%- if z.best == state_attr('zone.home', 'friendly_name') -%}{%- elif z.best -%}{{ ' · ' ~ z.best }}
+            {%- else -%}{{ ' · Other, ' ~ ((dh | round(1)) if dh < 10 else (dh | round(0) | int)) ~ ' km from Home' }}{%- endif -%}
+            {%- endmacro -%}
             {%- set ns = namespace(o=['➕ New precondition schedule', '➕ New charge schedule']) -%}
             {%- for s in pre | sort(attribute='precondition_time') -%}
             {%- set ns.o = ns.o + ['🌡️ ' ~ s['*precondition_time'] ~ ' · ' ~ s['*days'] ~ ' · '
-                 ~ ('Once' if s.one_time else 'Weekly') ~ ('' if s.enabled else ' · paused') ~ ' · #' ~ s.id] -%}
+                 ~ ('Once' if s.one_time else 'Weekly') ~ ('' if s.enabled else ' · paused') ~ where(s) ~ ' · #' ~ s.id] -%}
             {%- endfor -%}
             {%- for s in ch | sort(attribute='start_time') -%}
             {%- set ns.o = ns.o + ['🔌 ' ~ ((s['*start_time'] ~ '–' ~ s['*end_time']) if s.start_enabled and s.end_enabled
                  else ('from ' ~ s['*start_time']) if s.start_enabled else ('until ' ~ s['*end_time'])) ~ ' · ' ~ s['*days'] ~ ' · '
-                 ~ ('Once' if s.one_time else 'Weekly') ~ ('' if s.enabled else ' · paused') ~ ' · #' ~ s.id] -%}
+                 ~ ('Once' if s.one_time else 'Weekly') ~ ('' if s.enabled else ' · paused') ~ where(s) ~ ' · #' ~ s.id] -%}
             {%- endfor -%}
             {{- ns.o -}}
       - action: input_select.set_options
@@ -474,6 +498,26 @@ automation:
             {%- else -%}{{ {'days': 127, 'precondition_time': 420, 'one_time': false, 'enabled': true} }}{%- endif -%}
           t1: "{{ (s.precondition_time if kind == 'precondition' else s.start_time) | int(0) }}"
           t2: "{{ s.end_time | default(360) | int(0) }}"
+          zone_names: >-
+            {%- set zs = states.zone | selectattr('attributes.latitude', 'defined') | list -%}
+            {{- (zs | selectattr('entity_id', 'eq', 'zone.home') | map(attribute='name') | list)
+                + (zs | rejectattr('entity_id', 'eq', 'zone.home') | map(attribute='name') | sort | list) -}}
+          loc_zone: >-
+            {%- set z = namespace(best='', d=99999) -%}
+            {%- if s.latitude is defined -%}
+            {%- for zone in states.zone if zone.attributes.latitude is defined -%}
+            {%- set d = distance(s.latitude, s.longitude, zone.entity_id) -%}
+            {%- if d is number and d <= [zone.attributes.radius | default(100) / 1000, 0.5] | max and d < z.d -%}
+            {%- set z.best = zone.name -%}{%- set z.d = d -%}{%- endif -%}{%- endfor -%}
+            {%- endif -%}
+            {{- z.best -}}
+          loc_keep: >-
+            {%- if s.latitude is defined and loc_zone == '' -%}
+            {%- set dh = distance(s.latitude, s.longitude, 'zone.home') -%}
+            📍 Keep: Other, {{ (dh | round(1)) if dh < 10 else (dh | round(0) | int) }} km from Home
+            {%- endif -%}
+          loc_options: "{{ zone_names + ([loc_keep] if loc_keep else []) }}"
+          loc_selected: "{{ loc_zone if loc_zone else (loc_keep if loc_keep else zone_names[0]) }}"
           on_list: >-
             {%- set names = ['sun','mon','tue','wed','thu','fri','sat'] -%}
             {%- set ns = namespace(l=[]) -%}
@@ -495,6 +539,16 @@ automation:
           entity_id: input_select.tesla_schedule_type
         data:
           option: "{{ kind }}"
+      - action: input_select.set_options
+        target:
+          entity_id: input_select.tesla_schedule_location
+        data:
+          options: "{{ loc_options }}"
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.tesla_schedule_location
+        data:
+          option: "{{ loc_selected }}"
       - action: input_datetime.set_datetime
         target:
           entity_id: input_datetime.tesla_schedule_time

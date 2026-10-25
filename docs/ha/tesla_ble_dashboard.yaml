@@ -17,7 +17,7 @@ cards:
 - type: markdown
   title: Schedules
   content: |-
-    {%- macro loc(s) -%}{{ 'Home' if distance(s.latitude, s.longitude, 'zone.home') < 0.5 else s.latitude ~ ', ' ~ s.longitude }}{%- endmacro -%}
+    {%- macro loc(s) -%}{%- set z = namespace(best='', d=99999) -%}{%- for zone in states.zone if zone.attributes.latitude is defined -%}{%- set d = distance(s.latitude, s.longitude, zone.entity_id) -%}{%- if d is number and d <= [zone.attributes.radius | default(100) / 1000, 0.5] | max and d < z.d -%}{%- set z.best = zone.name -%}{%- set z.d = d -%}{%- endif -%}{%- endfor -%}{%- set dh = distance(s.latitude, s.longitude, 'zone.home') -%}{{- z.best if z.best else 'Other, ' ~ ((dh | round(1)) if dh < 10 else (dh | round(0) | int)) ~ ' km from Home' -}}{%- endmacro -%}
     {%- set ch = state_attr('sensor.tesla_charge_schedules', 'schedules') -%}
     {%- set pre = state_attr('sensor.tesla_precondition_schedules', 'schedules') -%}
     ### 🌡️ Preconditioning
@@ -101,7 +101,7 @@ cards:
           perform_action: script.tesla_refresh_schedules
     - type: markdown
       content: |-
-        {%- macro loc(s) -%}{{ 'Home' if distance(s.latitude, s.longitude, 'zone.home') < 0.5 else s.latitude ~ ', ' ~ s.longitude }}{%- endmacro -%}
+        {%- macro loc(s) -%}{%- set z = namespace(best='', d=99999) -%}{%- for zone in states.zone if zone.attributes.latitude is defined -%}{%- set d = distance(s.latitude, s.longitude, zone.entity_id) -%}{%- if d is number and d <= [zone.attributes.radius | default(100) / 1000, 0.5] | max and d < z.d -%}{%- set z.best = zone.name -%}{%- set z.d = d -%}{%- endif -%}{%- endfor -%}{%- set dh = distance(s.latitude, s.longitude, 'zone.home') -%}{{- z.best if z.best else 'Other, ' ~ ((dh | round(1)) if dh < 10 else (dh | round(0) | int)) ~ ' km from Home' -}}{%- endmacro -%}
         {%- set ch = state_attr('sensor.tesla_charge_schedules', 'schedules') -%}
         {%- set pre = state_attr('sensor.tesla_precondition_schedules', 'schedules') -%}
         ### 🌡️ Preconditioning
@@ -185,6 +185,8 @@ cards:
         row:
           entity: input_boolean.tesla_schedule_end_enabled
           name: Use end time
+      - entity: input_select.tesla_schedule_location
+        name: Location
       - entity: input_boolean.tesla_schedule_one_time
         name: One time only
       - entity: input_boolean.tesla_schedule_enabled
