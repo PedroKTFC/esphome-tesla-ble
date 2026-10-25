@@ -3,6 +3,8 @@ substitutions:
   device_name: tesla-ble
   device_description: Tesla BLE
   charging_amps_max: "32"
+#  ota_mode: password # This is the default so no need for this line (this is here only for info)
+#  ota_mode: encryption # Uncomment this line to save memory
 
   # --- Single car setup (default) ---
   # Add the following two lines to your secrets.yaml:
@@ -52,6 +54,7 @@ packages:
       - packages/common.yml
       - packages/project.yml
       - packages/client.yml
+  #    - packages/charging-freshness.yml # Optional receipt timestamps for charging watchdogs; see docs/charging-freshness.md
   #    - packages/listener.yml  # Uncomment this to scan find your VIN BLE MAC address
   #    - packages/evcc.yml  # Uncomment this if you plan to use the ESP for EVCC charge control
   #    - packages/language_hu.yml # Uncomment this to translate the entity names to your language. If yours is missing, submit a PR here!
