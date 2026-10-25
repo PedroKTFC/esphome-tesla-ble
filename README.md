@@ -83,6 +83,7 @@ There are two categories, those available even when asleep and those only when a
   - Charge level (%)
   - Charge limit (%)
   - Charge power (kW)
+  - Charge power calculated (kW). Calculation is: charge current x charge voltage x charge phases. Disabled by default.
   - Charge rate (charging rate in mph/kph). Disabled by default.
   - Charge voltage (V)
   - Charger phases (1 or 3). Disabled by default.
