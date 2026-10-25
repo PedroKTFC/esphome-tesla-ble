@@ -5,6 +5,7 @@
 #   - sensor.tesla_charge_schedules / sensor.tesla_precondition_schedules (state = count, attributes
 #     `schedules` = the list read from the car, `read_at` = when it was read)
 #   - scripts to wake the car, refresh the lists, add/edit/delete schedules and precondition now
+#   - an automation that re-reads the lists whenever the car is awake and the last read is over an hour old
 #   - a schedule editor (helpers + 2 automations) used by docs/ha/tesla_ble_dashboard.yaml
 #
 # Install:
@@ -366,6 +367,37 @@ script:
 
 # ----------------------------------------------------------------------------------- automations
 automation:
+  - id: tesla_schedules_auto_refresh
+    alias: Tesla schedules - refresh when the car is awake
+    description: >-
+      Reads both schedule lists when the car is awake and in BLE range and the last confirmed read is
+      older than an hour (or missing). It never wakes the car itself, so it costs no extra battery.
+    mode: single
+    max_exceeded: silent
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.tesla_ble_asleep
+        to: "off"
+        for: { seconds: 30 }   # let the infotainment system settle after waking
+      - trigger: state
+        entity_id: binary_sensor.tesla_ble_ble_status
+        to: "on"
+        for: { seconds: 30 }   # car came back into range (it may already be awake)
+      - trigger: time_pattern
+        minutes: "/30"         # catches an awake car whose read went stale while in range
+    conditions:
+      - condition: state
+        entity_id: binary_sensor.tesla_ble_ble_status
+        state: "on"
+      - condition: state
+        entity_id: binary_sensor.tesla_ble_asleep
+        state: "off"
+      - "{{ (state_attr('sensor.tesla_precondition_schedules', 'read_at') | as_datetime(none)) is none
+            or now() - (state_attr('sensor.tesla_precondition_schedules', 'read_at') | as_datetime) > timedelta(hours=1) }}"
+    actions:
+      - action: esphome.tesla_ble_get_charge_schedules
+      - action: esphome.tesla_ble_get_precondition_schedules
+
   - id: tesla_schedule_editor_sync_list
     alias: Tesla schedule editor - sync list
     description: Rebuilds the editor's schedule list when the car's schedules change, keeping the selection.

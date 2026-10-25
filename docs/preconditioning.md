@@ -56,7 +56,7 @@ Everything needed on the Home Assistant side is in two files you can paste as th
 Both assume the ESPHome device name `tesla-ble` (entities `*.tesla_ble_*`, actions `esphome.tesla_ble_*`). If yours differs, search-and-replace `tesla_ble_` in both files.
 
 #### Sensors
-- **Tesla charge schedules** / **Tesla precondition schedules**: the state is the number of schedules; the `schedules` attribute holds the list exactly as the car reports it (see the event fields above). They update whenever the lists are read, which happens automatically after every add, edit or delete.
+- **Tesla charge schedules** / **Tesla precondition schedules**: the state is the number of schedules; the `schedules` attribute holds the list exactly as the car reports it (see the event fields above). They update whenever the lists are read: automatically after every add, edit or delete, and by the *refresh when the car is awake* automation whenever the car is awake and in BLE range and the last read is over an hour old (it never wakes the car itself). The `read_at` attribute is the time of the last confirmed read; the example card warns when it is older than 6 hours.
 
 #### Scripts
 All scripts that talk to the car call **Tesla - ensure awake** first. It presses **Wake up** if the car is asleep, waits up to 60 s for **Asleep** to turn off, and stops with an error if the car does not wake, so nothing is sent to a sleeping car.
