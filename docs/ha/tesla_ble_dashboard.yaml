@@ -40,7 +40,7 @@ cards:
     | **{{ s['*start_time'] if s.start_enabled else '–' }}** | {{ s['*end_time'] if s.end_enabled else '–' }} | {{ s['*days'] }} | {{ 'Once' if s.one_time else 'Weekly' }} | {{ '✅' if s.enabled else '⏸️' }} | {{ loc(s) }} |
     {% endfor %}{% endif %}
 
-    {%- set t = state_attr('sensor.tesla_precondition_schedules', 'read_at') | as_datetime(none) %}
+    {% set t = state_attr('sensor.tesla_precondition_schedules', 'read_at') | as_datetime(none) %}
     {%- if t is none %}⚠️ **Not read from the car yet: tap Refresh**
     {%- elif now() - t > timedelta(hours=6) %}⚠️ **Read {{ relative_time(t) }} ago: may be out of date, tap Refresh**
     {%- else %}<small>Read {{ relative_time(t) }} ago</small>{% endif %}
@@ -124,7 +124,7 @@ cards:
         | **{{ s['*start_time'] if s.start_enabled else '–' }}** | {{ s['*end_time'] if s.end_enabled else '–' }} | {{ s['*days'] }} | {{ 'Once' if s.one_time else 'Weekly' }} | {{ '✅' if s.enabled else '⏸️' }} | {{ loc(s) }} |
         {% endfor %}{% endif %}
 
-        {%- set t = state_attr('sensor.tesla_precondition_schedules', 'read_at') | as_datetime(none) %}
+        {% set t = state_attr('sensor.tesla_precondition_schedules', 'read_at') | as_datetime(none) %}
         {%- if t is none %}⚠️ **Not read from the car yet: tap Refresh**
         {%- elif now() - t > timedelta(hours=6) %}⚠️ **Read {{ relative_time(t) }} ago: may be out of date, tap Refresh**
         {%- else %}<small>Read {{ relative_time(t) }} ago</small>{% endif %}
