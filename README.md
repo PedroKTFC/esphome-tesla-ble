@@ -89,6 +89,8 @@ There are two categories, those available even when asleep and those only when a
   - Charger phases (1 or 3). Disabled by default.
   - Charging state (eg Stopped, Charging, Complete)
   - Climate on/off
+  - Battery heater on/off
+  - Preconditioning on/off
   - Climate temperature (°C). Note this is actually the driver's temperature setting.
   - Current limit setting (Amps)
   - Defrost state on/off
@@ -110,7 +112,11 @@ For automations that must detect stale charging readings, see the optional [char
 
 ### Charging schedules
 
-Please refer to [charging_schedules.md](./docs/charging_schedules.md) for how to view, set and delete charging schedules.
+Please refer to [charging_schedules.md](./docs/charging_schedules.md) for how to view, add, edit and delete charging schedules.
+
+### Preconditioning
+
+Please refer to [preconditioning.md](./docs/preconditioning.md) for how to start preconditioning from Home Assistant and how to view, add, edit and delete preconditioning (departure) schedules.
 
 ### Diagnostics
 

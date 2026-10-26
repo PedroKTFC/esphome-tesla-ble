@@ -68,6 +68,12 @@ namespace esphome
             DEL_CHARGING_SCHEDULE,
             SET_CABIN_OVERHEAT_PROTECTION,
             SET_CABIN_OVERHEAT_LIMIT,
+            ADD_CHARGE_SCHEDULE,
+            GET_PRECONDITION_SCHEDULE_STATE,
+            ADD_PRECONDITION_SCHEDULE,
+            DEL_PRECONDITION_SCHEDULE,
+            SET_SCHEDULED_DEPARTURE,
+            SET_SCHEDULED_CHARGING,
             _COUNT  // sentinel value to get count of entries
         };
         enum class AllowedMsg // The type of messages to send
@@ -89,6 +95,7 @@ namespace esphome
             GetLocationState,
             GetClosureState,
             GetChargeScheduleState,
+            GetPreconditionScheduleState,
             Invalid // Eg a data read, sensor not yet implemented, etc
         };
 
@@ -106,7 +113,7 @@ namespace esphome
             GetOnSet getOnSet;
             int numberUpdatesBetweenGets; // Only used for GetVehicleDataMessage
         };
-        static constexpr std::array<ActionMessageDetail, 29> ACTION_SPECIFICS // Don't forget to increase the size when adding a row
+        static constexpr std::array<ActionMessageDetail, 35> ACTION_SPECIFICS // Don't forget to increase the size when adding a row
         {{
             {BLE_CarServer_VehicleAction::DO_NOTHING,                       "",                          AllowedMsg::Empty,                 0,                                                              GetOnSet::Invalid,                0},
             {BLE_CarServer_VehicleAction::GET_CHARGE_STATE,                 "getChargeState",            AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getChargeState_tag,                    GetOnSet::Invalid,                1},
@@ -137,6 +144,12 @@ namespace esphome
             {BLE_CarServer_VehicleAction::DEL_CHARGING_SCHEDULE,            "delChargingSchedule",       AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_removeChargeScheduleAction_tag,         GetOnSet::GetChargeScheduleState, 0},
             {BLE_CarServer_VehicleAction::SET_CABIN_OVERHEAT_PROTECTION,    "setCabinOverheatProtection",AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_setCabinOverheatProtectionAction_tag,   GetOnSet::GetClimateState,        0},
             {BLE_CarServer_VehicleAction::SET_CABIN_OVERHEAT_LIMIT,         "setCabinOverheatLimit",     AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_setCopTempAction_tag,                   GetOnSet::GetClimateState,        0},
+            {BLE_CarServer_VehicleAction::ADD_CHARGE_SCHEDULE,              "addChargeSchedule",         AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_addChargeScheduleAction_tag,            GetOnSet::GetChargeScheduleState, 0},
+            {BLE_CarServer_VehicleAction::GET_PRECONDITION_SCHEDULE_STATE,  "getPreconditionScheduleState",AllowedMsg::GetVehicleDataMessage,CarServer_GetVehicleData_getPreconditioningScheduleState_tag, GetOnSet::Invalid,                0},
+            {BLE_CarServer_VehicleAction::ADD_PRECONDITION_SCHEDULE,        "addPreconditionSchedule",   AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_addPreconditionScheduleAction_tag,      GetOnSet::GetPreconditionScheduleState, 0},
+            {BLE_CarServer_VehicleAction::DEL_PRECONDITION_SCHEDULE,        "delPreconditionSchedule",   AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_removePreconditionScheduleAction_tag,   GetOnSet::GetPreconditionScheduleState, 0},
+            {BLE_CarServer_VehicleAction::SET_SCHEDULED_DEPARTURE,          "setScheduledDeparture",     AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_scheduledDepartureAction_tag,           GetOnSet::GetChargeState,         0},
+            {BLE_CarServer_VehicleAction::SET_SCHEDULED_CHARGING,           "setScheduledCharging",      AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_scheduledChargingAction_tag,            GetOnSet::GetChargeState,         0},
         }};
         static_assert(ACTION_SPECIFICS.size() == static_cast<std::size_t>(BLE_CarServer_VehicleAction::_COUNT), "ACTION_SPECIFICS out of sync with enum");
         static const char *const TAG = "tesla_ble_vehicle";
@@ -236,6 +249,8 @@ namespace esphome
             IsBootOpen,
             IsFrunkOpen,
             IsClimateOn,
+            IsBatteryHeaterOn,
+            IsPreconditioning,
             WindowsState,
             Count
         };
@@ -350,6 +365,7 @@ namespace esphome
             int sendVCSECInformationRequest(void);
             void enqueueVCSECInformationRequest(bool force = false);
             int actions_setChargeSchedule (
+                                           std::string id,
                                            std::string name,
                                            int days_of_week,
                                            bool start_enabled,
@@ -361,6 +377,26 @@ namespace esphome
                                            float latitude,
                                            float longitude
                                           );
+            int actions_setPreconditionSchedule (
+                                           std::string id,
+                                           std::string name,
+                                           int days_of_week,
+                                           int precondition_time,
+                                           bool one_time,
+                                           bool enabled,
+                                           float latitude,
+                                           float longitude
+                                          );
+            int actions_setScheduledDeparture (
+                                           bool enabled,
+                                           int departure_time,
+                                           int preconditioning_policy,
+                                           int off_peak_policy,
+                                           int off_peak_end_time
+                                          );
+            int actions_deleteSchedule (BLE_CarServer_VehicleAction action, std::string id);
+            int actions_startPreconditioning (float temperature);
+            int actions_queueBuiltAction (BLE_CarServer_VehicleAction action, std::function<void(CarServer_VehicleAction&)> fill);
             int actions_buildCarServerGetVehicleDataMessage(pb_byte_t *output_buffer, size_t *output_length, int which_get);
             int actions_buildCarServerVehicleActionMessage (int32_t parameter, pb_byte_t *output_buffer, size_t *output_length, int which_tag, uint64_t long_param = 0);
 
@@ -526,6 +562,26 @@ namespace esphome
                     }
                 }
                 return result;
+            }
+            static uint64_t parse_schedule_id (const std::string& id)
+            { // Returns 0 if id is empty or not a number
+                if (id.empty())
+                    return 0;
+                char *end = nullptr;
+                uint64_t value = strtoull (id.c_str(), &end, 10);
+                return (end != nullptr && *end == '\0') ? value : 0;
+            }
+            static std::string json_escape (const char *s)
+            {
+                std::string out;
+                for (; *s; s++)
+                {
+                    if (*s == '"' || *s == '\\')
+                        out += '\\';
+                    if (static_cast<unsigned char>(*s) >= 0x20)
+                        out += *s;
+                }
+                return out;
             }
 
         protected:
