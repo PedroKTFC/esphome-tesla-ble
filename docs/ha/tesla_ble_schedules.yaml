@@ -183,7 +183,7 @@ script:
       one_time:
         name: One time
         required: true
-        default: false
+        default: true   # one-time by default: a forgotten weekly schedule keeps running unnoticed
         selector: { boolean: }
       enabled:
         name: Enabled
@@ -216,7 +216,7 @@ script:
           name: ""
           days_of_week: "{{ bits }}"
           precondition_time: "{{ (time.split(':')[0] | int) * 60 + (time.split(':')[1] | int) }}"
-          one_time: "{{ one_time | default(false) }}"
+          one_time: "{{ one_time | default(true) }}"
           enabled: "{{ enabled | default(true) }}"
           latitude: "{{ lat | float }}"
           longitude: "{{ lon | float }}"
@@ -268,7 +268,7 @@ script:
           start_time: "{{ (time.split(':')[0] | int) * 60 + (time.split(':')[1] | int) }}"
           end_enabled: "{{ end_enabled | default(true) }}"
           end_time: "{{ (end_time.split(':')[0] | int) * 60 + (end_time.split(':')[1] | int) }}"
-          one_time: "{{ one_time | default(false) }}"
+          one_time: "{{ one_time | default(true) }}"
           enabled: "{{ enabled | default(true) }}"
           latitude: "{{ lat | float }}"
           longitude: "{{ lon | float }}"
@@ -494,8 +494,8 @@ automation:
             {%- if match_pre | count > 0 -%}{{ match_pre[0] -}}
             {%- elif match_ch | count > 0 -%}{{ match_ch[0] -}}
             {%- elif kind == 'charge' -%}{{ {'days': 127, 'start_time': 0, 'end_time': 360, 'start_enabled': true,
-                                           'end_enabled': true, 'one_time': false, 'enabled': true} -}}
-            {%- else -%}{{ {'days': 127, 'precondition_time': 420, 'one_time': false, 'enabled': true} }}{%- endif -%}
+                                           'end_enabled': true, 'one_time': true, 'enabled': true} -}}
+            {%- else -%}{{ {'days': 127, 'precondition_time': 420, 'one_time': true, 'enabled': true} }}{%- endif -%}
           t1: "{{ (s.precondition_time if kind == 'precondition' else s.start_time) | int(0) }}"
           t2: "{{ s.end_time | default(360) | int(0) }}"
           zone_names: >-
