@@ -163,7 +163,7 @@ script:
       schedule when it is parked near its location: pick a zone, or give latitude/longitude (these win).
     icon: mdi:car-clock
     mode: queued
-    fields: &schedule_common_fields
+    fields:
       schedule_id:
         name: Schedule ID
         description: Empty adds a new schedule, an existing ID edits it
@@ -227,7 +227,10 @@ script:
     icon: mdi:ev-station
     mode: queued
     fields:
-      <<: *schedule_common_fields
+      schedule_id:
+        name: Schedule ID
+        description: Empty adds a new schedule, an existing ID edits it
+        selector: { text: }
       time:
         name: Start
         required: true
@@ -256,6 +259,27 @@ script:
           select:
             multiple: true
             options: [Sun, Mon, Tue, Wed, Thu, Fri, Sat]
+      one_time:
+        name: One time
+        required: true
+        default: true
+        selector: { boolean: }
+      enabled:
+        name: Enabled
+        required: true
+        default: true
+        selector: { boolean: }
+      location:
+        name: Location
+        required: true
+        default: zone.home
+        selector: { entity: { domain: zone } }
+      latitude:
+        name: Latitude (overrides location)
+        selector: { number: { min: -90, max: 90, step: any, mode: box } }
+      longitude:
+        name: Longitude (overrides location)
+        selector: { number: { min: -180, max: 180, step: any, mode: box } }
     sequence:
       - variables: *schedule_common_vars
       - action: script.tesla_ensure_awake
