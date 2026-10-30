@@ -4,6 +4,7 @@
 //#include <esphome/core/helpers.h>
 //#include <esphome/core/log.h>
 
+#include <pb_encode.h>
 #include <car_server.pb.h>
 #include <signatures.pb.h>
 #include <universal_message.pb.h>
@@ -210,6 +211,67 @@ int TeslaBLEVehicle::actions_buildCarServerVehicleActionMessage (
 		vehicle_action_msg_.setCopTempAction 				   = CarServer_SetCopTempAction_init_default;
 		vehicle_action_msg_.setCopTempAction.copActivationTemp = static_cast<CarServer_ClimateState_CopActivationTemp>(set_value);
 		break;
+	case CarServer_VehicleAction_hvacSeatHeaterActions_tag:
+	{
+		vehicle_action_msg_.hvacSeatHeaterActions = CarServer_HvacSeatHeaterActions_init_default;
+
+		// long_param carries the seat position tag (CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_CAR_SEAT_xxx_tag)
+		actions_seat_heater_action_ = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_init_default;
+		actions_seat_heater_action_.which_seat_position = static_cast<pb_size_t>(long_param);
+		switch (long_param)
+		{
+		case CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_CAR_SEAT_FRONT_LEFT_tag:
+			actions_seat_heater_action_.seat_position.CAR_SEAT_FRONT_LEFT = CarServer_Void_init_default;
+			break;
+		case CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_CAR_SEAT_FRONT_RIGHT_tag:
+			actions_seat_heater_action_.seat_position.CAR_SEAT_FRONT_RIGHT = CarServer_Void_init_default;
+			break;
+		case CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_CAR_SEAT_REAR_LEFT_tag:
+			actions_seat_heater_action_.seat_position.CAR_SEAT_REAR_LEFT = CarServer_Void_init_default;
+			break;
+		case CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_CAR_SEAT_REAR_CENTER_tag:
+			actions_seat_heater_action_.seat_position.CAR_SEAT_REAR_CENTER = CarServer_Void_init_default;
+			break;
+		case CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_CAR_SEAT_REAR_RIGHT_tag:
+			actions_seat_heater_action_.seat_position.CAR_SEAT_REAR_RIGHT = CarServer_Void_init_default;
+			break;
+		default:
+			ESP_LOGE (TAG, "Tag type %i, invalid seat position %" PRIu64, which_tag, long_param);
+			return TeslaBLE::TeslaBLE_Status_E_ERROR_INTERNAL;
+		}
+
+		// set_value carries the level tag (CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_xxx_tag)
+		actions_seat_heater_action_.which_seat_heater_level = static_cast<pb_size_t>(set_value);
+		switch (set_value)
+		{
+		case CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_OFF_tag:
+			actions_seat_heater_action_.seat_heater_level.SEAT_HEATER_OFF = CarServer_Void_init_default;
+			break;
+		case CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_LOW_tag:
+			actions_seat_heater_action_.seat_heater_level.SEAT_HEATER_LOW = CarServer_Void_init_default;
+			break;
+		case CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_MED_tag:
+			actions_seat_heater_action_.seat_heater_level.SEAT_HEATER_MED = CarServer_Void_init_default;
+			break;
+		case CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_HIGH_tag:
+			actions_seat_heater_action_.seat_heater_level.SEAT_HEATER_HIGH = CarServer_Void_init_default;
+			break;
+		default:
+			ESP_LOGE (TAG, "Tag type %i, unexpected seat heater set_value received %" PRId32, which_tag, set_value);
+			return TeslaBLE::TeslaBLE_Status_E_ERROR_INTERNAL;
+		}
+
+		// hvacSeatHeaterAction is a repeated field, which nanopb generates as a callback, so encode our single entry here
+		vehicle_action_msg_.hvacSeatHeaterActions.hvacSeatHeaterAction.funcs.encode =
+			[](pb_ostream_t *stream, const pb_field_iter_t *field, void * const *arg) -> bool {
+				const auto *act = static_cast<const CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction*>(*arg);
+				if (!pb_encode_tag_for_field(stream, field))
+					return false;
+				return pb_encode_submessage(stream, CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_fields, act);
+			};
+		vehicle_action_msg_.hvacSeatHeaterActions.hvacSeatHeaterAction.arg = &actions_seat_heater_action_;
+		break;
+	}
 	default:
 		ESP_LOGE (TAG, "Tag type %i, car server vehicle action message not built", which_tag);
 		return TeslaBLE::TeslaBLE_Status_E_ERROR_INTERNAL;

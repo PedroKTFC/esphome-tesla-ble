@@ -62,6 +62,11 @@ tesla_ble_vehicle:
   defrost_switch: sw_defrost_car
   cabin_overheat_protection: sel_cabin_overheat_protection
   cabin_overheat_limit: sel_cabin_overheat_limit
+  seat_heater_front_left: sel_seat_heater_front_left
+  seat_heater_front_right: sel_seat_heater_front_right
+  seat_heater_rear_left: sel_seat_heater_rear_left
+  seat_heater_rear_center: sel_seat_heater_rear_center
+  seat_heater_rear_right: sel_seat_heater_rear_right
   update_interval: 10s # default
   post_wake_poll_time: 300 # How long to poll for data after car awakes (s)
   poll_data_period: 60 # Normal period when polling for data when not asleep (s)
@@ -781,6 +786,176 @@ select:
               param = CarServer_ClimateState_CopActivationTemp_CopActivationTempHigh ;
             }
             id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage (tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_CABIN_OVERHEAT_LIMIT, param);
+          }
+    disabled_by_default: true
+
+  - platform: template
+    name: "Front left seat heater"
+    id: sel_seat_heater_front_left
+    icon: mdi:car-seat-heater
+    options:
+      - "Off"
+      - "Low"
+      - "Medium"
+      - "High"
+      - "Unknown"
+    initial_option: "Unknown"
+    set_action:
+      - lambda: |-
+          if (x != "Unknown")
+          {
+            int level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_OFF_tag;
+            if (x == "Low")
+            {
+              level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_LOW_tag;
+            }
+            else if (x == "Medium")
+            {
+              level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_MED_tag;
+            }
+            else if (x == "High")
+            {
+              level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_HIGH_tag;
+            }
+            id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(
+              tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_SEAT_HEATER, level,
+              CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_CAR_SEAT_FRONT_LEFT_tag);
+          }
+    disabled_by_default: true
+
+  - platform: template
+    name: "Front right seat heater"
+    id: sel_seat_heater_front_right
+    icon: mdi:car-seat-heater
+    options:
+      - "Off"
+      - "Low"
+      - "Medium"
+      - "High"
+      - "Unknown"
+    initial_option: "Unknown"
+    set_action:
+      - lambda: |-
+          if (x != "Unknown")
+          {
+            int level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_OFF_tag;
+            if (x == "Low")
+            {
+              level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_LOW_tag;
+            }
+            else if (x == "Medium")
+            {
+              level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_MED_tag;
+            }
+            else if (x == "High")
+            {
+              level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_HIGH_tag;
+            }
+            id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(
+              tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_SEAT_HEATER, level,
+              CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_CAR_SEAT_FRONT_RIGHT_tag);
+          }
+    disabled_by_default: true
+
+  - platform: template
+    name: "Rear left seat heater"
+    id: sel_seat_heater_rear_left
+    icon: mdi:car-seat-heater
+    options:
+      - "Off"
+      - "Low"
+      - "Medium"
+      - "High"
+      - "Unknown"
+    initial_option: "Unknown"
+    set_action:
+      - lambda: |-
+          if (x != "Unknown")
+          {
+            int level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_OFF_tag;
+            if (x == "Low")
+            {
+              level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_LOW_tag;
+            }
+            else if (x == "Medium")
+            {
+              level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_MED_tag;
+            }
+            else if (x == "High")
+            {
+              level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_HIGH_tag;
+            }
+            id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(
+              tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_SEAT_HEATER, level,
+              CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_CAR_SEAT_REAR_LEFT_tag);
+          }
+    disabled_by_default: true
+
+  - platform: template
+    name: "Rear center seat heater"
+    id: sel_seat_heater_rear_center
+    icon: mdi:car-seat-heater
+    options:
+      - "Off"
+      - "Low"
+      - "Medium"
+      - "High"
+      - "Unknown"
+    initial_option: "Unknown"
+    set_action:
+      - lambda: |-
+          if (x != "Unknown")
+          {
+            int level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_OFF_tag;
+            if (x == "Low")
+            {
+              level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_LOW_tag;
+            }
+            else if (x == "Medium")
+            {
+              level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_MED_tag;
+            }
+            else if (x == "High")
+            {
+              level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_HIGH_tag;
+            }
+            id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(
+              tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_SEAT_HEATER, level,
+              CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_CAR_SEAT_REAR_CENTER_tag);
+          }
+    disabled_by_default: true
+
+  - platform: template
+    name: "Rear right seat heater"
+    id: sel_seat_heater_rear_right
+    icon: mdi:car-seat-heater
+    options:
+      - "Off"
+      - "Low"
+      - "Medium"
+      - "High"
+      - "Unknown"
+    initial_option: "Unknown"
+    set_action:
+      - lambda: |-
+          if (x != "Unknown")
+          {
+            int level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_OFF_tag;
+            if (x == "Low")
+            {
+              level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_LOW_tag;
+            }
+            else if (x == "Medium")
+            {
+              level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_MED_tag;
+            }
+            else if (x == "High")
+            {
+              level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_HIGH_tag;
+            }
+            id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(
+              tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_SEAT_HEATER, level,
+              CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_CAR_SEAT_REAR_RIGHT_tag);
           }
     disabled_by_default: true
 
