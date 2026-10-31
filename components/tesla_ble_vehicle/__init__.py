@@ -49,6 +49,11 @@ CONF_CHARGER_SWITCH             = "charger_switch"
 CONF_DEFROST_SWITCH             = "defrost_switch"
 CONF_CABIN_OVERHEAT_PROTECTION  = "cabin_overheat_protection"
 CONF_CABIN_OVERHEAT_LIMIT       = "cabin_overheat_limit"
+CONF_SEAT_HEATER_FRONT_LEFT     = "seat_heater_front_left"
+CONF_SEAT_HEATER_FRONT_RIGHT    = "seat_heater_front_right"
+CONF_SEAT_HEATER_REAR_LEFT      = "seat_heater_rear_left"
+CONF_SEAT_HEATER_REAR_CENTER    = "seat_heater_rear_center"
+CONF_SEAT_HEATER_REAR_RIGHT     = "seat_heater_rear_right"
 
 SENSORS = {
     "is_asleep": binary (BinarySensorId.IsAsleep,
@@ -157,6 +162,11 @@ schema_dict[cv.Optional(CONF_CHARGER_SWITCH)] = cv.use_id(switch.Switch)
 schema_dict[cv.Optional(CONF_DEFROST_SWITCH)] = cv.use_id(switch.Switch)
 schema_dict[cv.Optional(CONF_CABIN_OVERHEAT_PROTECTION)] = cv.use_id(select.Select)
 schema_dict[cv.Optional(CONF_CABIN_OVERHEAT_LIMIT)] = cv.use_id(select.Select)
+schema_dict[cv.Optional(CONF_SEAT_HEATER_FRONT_LEFT)] = cv.use_id(select.Select)
+schema_dict[cv.Optional(CONF_SEAT_HEATER_FRONT_RIGHT)] = cv.use_id(select.Select)
+schema_dict[cv.Optional(CONF_SEAT_HEATER_REAR_LEFT)] = cv.use_id(select.Select)
+schema_dict[cv.Optional(CONF_SEAT_HEATER_REAR_CENTER)] = cv.use_id(select.Select)
+schema_dict[cv.Optional(CONF_SEAT_HEATER_REAR_RIGHT)] = cv.use_id(select.Select)
 
 for key, spec in SENSORS.items():
     builder = SENSOR_TYPES_INFO[spec.type]["schema"]
@@ -200,6 +210,21 @@ async def to_code(config):
     if CONF_CABIN_OVERHEAT_LIMIT in config:
         sel = await cg.get_variable(config[CONF_CABIN_OVERHEAT_LIMIT])
         cg.add(var.set_cabin_overheat_temp_select(sel))
+    if CONF_SEAT_HEATER_FRONT_LEFT in config:
+        sel = await cg.get_variable(config[CONF_SEAT_HEATER_FRONT_LEFT])
+        cg.add(var.set_seat_heater_front_left_select(sel))
+    if CONF_SEAT_HEATER_FRONT_RIGHT in config:
+        sel = await cg.get_variable(config[CONF_SEAT_HEATER_FRONT_RIGHT])
+        cg.add(var.set_seat_heater_front_right_select(sel))
+    if CONF_SEAT_HEATER_REAR_LEFT in config:
+        sel = await cg.get_variable(config[CONF_SEAT_HEATER_REAR_LEFT])
+        cg.add(var.set_seat_heater_rear_left_select(sel))
+    if CONF_SEAT_HEATER_REAR_CENTER in config:
+        sel = await cg.get_variable(config[CONF_SEAT_HEATER_REAR_CENTER])
+        cg.add(var.set_seat_heater_rear_center_select(sel))
+    if CONF_SEAT_HEATER_REAR_RIGHT in config:
+        sel = await cg.get_variable(config[CONF_SEAT_HEATER_REAR_RIGHT])
+        cg.add(var.set_seat_heater_rear_right_select(sel))
         
     # 🔁 Auto-register all sensors
     for key, spec in SENSORS.items():
