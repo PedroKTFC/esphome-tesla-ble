@@ -798,28 +798,43 @@ select:
       - "Low"
       - "Medium"
       - "High"
+      - "Auto"
       - "Unknown"
     initial_option: "Unknown"
     set_action:
+      - if:
+          condition:
+            lambda: 'return (x != "Off" && x != "Unknown" && !id(is_climate_on).state);'
+          then:
+            - switch.turn_on: sw_climate
       - lambda: |-
           if (x != "Unknown")
           {
-            int level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_OFF_tag;
-            if (x == "Low")
+            if (x == "Auto")
             {
-              level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_LOW_tag;
+              id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(
+                tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_AUTO_SEAT_CLIMATE, 1,
+                CarServer_AutoSeatClimateAction_AutoSeatPosition_E_AutoSeatPosition_FrontLeft);
             }
-            else if (x == "Medium")
+            else
             {
-              level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_MED_tag;
+              int level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_OFF_tag;
+              if (x == "Low")
+              {
+                level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_LOW_tag;
+              }
+              else if (x == "Medium")
+              {
+                level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_MED_tag;
+              }
+              else if (x == "High")
+              {
+                level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_HIGH_tag;
+              }
+              id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(
+                tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_SEAT_HEATER, level,
+                CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_CAR_SEAT_FRONT_LEFT_tag);
             }
-            else if (x == "High")
-            {
-              level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_HIGH_tag;
-            }
-            id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(
-              tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_SEAT_HEATER, level,
-              CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_CAR_SEAT_FRONT_LEFT_tag);
           }
     disabled_by_default: true
 
@@ -832,28 +847,43 @@ select:
       - "Low"
       - "Medium"
       - "High"
+      - "Auto"
       - "Unknown"
     initial_option: "Unknown"
     set_action:
+      - if:
+          condition:
+            lambda: 'return (x != "Off" && x != "Unknown" && !id(is_climate_on).state);'
+          then:
+            - switch.turn_on: sw_climate
       - lambda: |-
           if (x != "Unknown")
           {
-            int level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_OFF_tag;
-            if (x == "Low")
+            if (x == "Auto")
             {
-              level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_LOW_tag;
+              id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(
+                tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_AUTO_SEAT_CLIMATE, 1,
+                CarServer_AutoSeatClimateAction_AutoSeatPosition_E_AutoSeatPosition_FrontRight);
             }
-            else if (x == "Medium")
+            else
             {
-              level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_MED_tag;
+              int level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_OFF_tag;
+              if (x == "Low")
+              {
+                level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_LOW_tag;
+              }
+              else if (x == "Medium")
+              {
+                level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_MED_tag;
+              }
+              else if (x == "High")
+              {
+                level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_HIGH_tag;
+              }
+              id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(
+                tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_SEAT_HEATER, level,
+                CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_CAR_SEAT_FRONT_RIGHT_tag);
             }
-            else if (x == "High")
-            {
-              level = CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_SEAT_HEATER_HIGH_tag;
-            }
-            id(tesla_ble_vehicle_id)->sendCarServerVehicleActionMessage(
-              tesla_ble_vehicle::BLE_CarServer_VehicleAction::SET_SEAT_HEATER, level,
-              CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_CAR_SEAT_FRONT_RIGHT_tag);
           }
     disabled_by_default: true
 
@@ -869,6 +899,11 @@ select:
       - "Unknown"
     initial_option: "Unknown"
     set_action:
+      - if:
+          condition:
+            lambda: 'return (x != "Off" && x != "Unknown" && !id(is_climate_on).state);'
+          then:
+            - switch.turn_on: sw_climate
       - lambda: |-
           if (x != "Unknown")
           {
@@ -903,6 +938,11 @@ select:
       - "Unknown"
     initial_option: "Unknown"
     set_action:
+      - if:
+          condition:
+            lambda: 'return (x != "Off" && x != "Unknown" && !id(is_climate_on).state);'
+          then:
+            - switch.turn_on: sw_climate
       - lambda: |-
           if (x != "Unknown")
           {
@@ -937,6 +977,11 @@ select:
       - "Unknown"
     initial_option: "Unknown"
     set_action:
+      - if:
+          condition:
+            lambda: 'return (x != "Off" && x != "Unknown" && !id(is_climate_on).state);'
+          then:
+            - switch.turn_on: sw_climate
       - lambda: |-
           if (x != "Unknown")
           {

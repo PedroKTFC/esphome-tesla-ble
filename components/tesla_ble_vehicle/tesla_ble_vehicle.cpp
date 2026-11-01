@@ -1393,36 +1393,44 @@ namespace esphome
                                                std::string execute_name,
                                                BLE_CarServer_VehicleAction action)
     {
-      if (command_queue_.size() == 0)
-      { // Queue is empty, place new command and nothing more to do
-        command_queue_.emplace (domain, execute, execute_name, action); // This swaps the original first and new command
+      if (command_queue_.empty())
+      {
+        command_queue_.emplace (domain, execute, execute_name, action);
         return;
       }
-      else
-      { // At least one command on queue. If the command at the front of the queue is in progress, it needs to stay there so it can finish.
+
+      auto is_action_cmd = [this](const BLECommand &c) {
+        if (c.action != BLE_CarServer_VehicleAction::DO_NOTHING &&
+            c.action < BLE_CarServer_VehicleAction::_COUNT &&
+            get_action_detail(c.action).whichMsg == AllowedMsg::VehicleActionMessage)
+          return true;
+        if (c.domain == UniversalMessage_Domain_DOMAIN_VEHICLE_SECURITY)
+          return true;
+        if (c.execute_name == "wake vehicle")
+          return true;
+        return false;
+      };
+
+      size_t original_size = command_queue_.size();
+      bool inserted = false;
+
+      for (size_t i = 0; i < original_size; i++)
+      {
         BLECommand moving_command = command_queue_.front();
         command_queue_.pop();
-        if (moving_command.state == BLECommandState::IDLE)
-        { // If the command at the front hasn't started, it goes behind the new action command
-          command_queue_.emplace (domain, execute, execute_name, action); // This swaps the original first and new command
-          command_queue_.push (moving_command); // Once the q has been cycled, this will 2nd
-        } else
-        { // If the command at the front has started, the new command goes behind it
-          command_queue_.push (moving_command);
-          command_queue_.emplace (domain, execute, execute_name, action); // Once the q has been cycled, this will 2nd
-        }
-        /*
-        *   At this point the back of the queue is either new command last, original front command just in front, or vice versa
-        *   depending on whether the original front command was in progress or not. Now just pop and push (to the back) all
-        *   remaining queue commands (if any).
-        */
-        int rest = command_queue_.size() - 2; // The 2 at the back will end up at the front.
-        for (int i = 0; i < rest; i++) // Loop won't execute if only 2 in q
+
+        if (!inserted && moving_command.state == BLECommandState::IDLE && !is_action_cmd(moving_command))
         {
-          BLECommand moving_command = command_queue_.front();
-          command_queue_.pop(); // Pop off front...
-          command_queue_.push (moving_command); // ... and push to the back
+          command_queue_.emplace (domain, execute, execute_name, action);
+          inserted = true;
         }
+
+        command_queue_.push(moving_command);
+      }
+
+      if (!inserted)
+      {
+        command_queue_.emplace (domain, execute, execute_name, action);
       }
     }
 
@@ -1968,25 +1976,29 @@ namespace esphome
             {
               ESP_LOGI (TAG, "No data to set cabin overheat temperature");
             }
-            if (carserver_response.response_msg.vehicleData.climate_state.which_optional_seat_heater_left)
+            if (carserver_response.response_msg.vehicleData.climate_state.which_optional_auto_seat_climate_left &&
+                carserver_response.response_msg.vehicleData.climate_state.optional_auto_seat_climate_left.auto_seat_climate_left)
+            {
+              publish_if (seat_heater_front_left_select_, "Auto");
+            }
+            else if (carserver_response.response_msg.vehicleData.climate_state.which_optional_seat_heater_left)
             {
               int32_t val = carserver_response.response_msg.vehicleData.climate_state.optional_seat_heater_left.seat_heater_left;
-              if (seat_heater_front_left_select_ != nullptr)
-              {
-                seat_heater_front_left_select_->publish_state(lookup_seat_heater_level(val));
-              }
+              publish_if (seat_heater_front_left_select_, lookup_seat_heater_level(val));
             }
             else
             {
               ESP_LOGI (TAG, "No data to set front left seat heater");
             }
-            if (carserver_response.response_msg.vehicleData.climate_state.which_optional_seat_heater_right)
+            if (carserver_response.response_msg.vehicleData.climate_state.which_optional_auto_seat_climate_right &&
+                carserver_response.response_msg.vehicleData.climate_state.optional_auto_seat_climate_right.auto_seat_climate_right)
+            {
+              publish_if (seat_heater_front_right_select_, "Auto");
+            }
+            else if (carserver_response.response_msg.vehicleData.climate_state.which_optional_seat_heater_right)
             {
               int32_t val = carserver_response.response_msg.vehicleData.climate_state.optional_seat_heater_right.seat_heater_right;
-              if (seat_heater_front_right_select_ != nullptr)
-              {
-                seat_heater_front_right_select_->publish_state(lookup_seat_heater_level(val));
-              }
+              publish_if (seat_heater_front_right_select_, lookup_seat_heater_level(val));
             }
             else
             {
@@ -1995,10 +2007,7 @@ namespace esphome
             if (carserver_response.response_msg.vehicleData.climate_state.which_optional_seat_heater_rear_left)
             {
               int32_t val = carserver_response.response_msg.vehicleData.climate_state.optional_seat_heater_rear_left.seat_heater_rear_left;
-              if (seat_heater_rear_left_select_ != nullptr)
-              {
-                seat_heater_rear_left_select_->publish_state(lookup_seat_heater_level(val));
-              }
+              publish_if (seat_heater_rear_left_select_, lookup_seat_heater_level(val));
             }
             else
             {
@@ -2007,10 +2016,7 @@ namespace esphome
             if (carserver_response.response_msg.vehicleData.climate_state.which_optional_seat_heater_rear_center)
             {
               int32_t val = carserver_response.response_msg.vehicleData.climate_state.optional_seat_heater_rear_center.seat_heater_rear_center;
-              if (seat_heater_rear_center_select_ != nullptr)
-              {
-                seat_heater_rear_center_select_->publish_state(lookup_seat_heater_level(val));
-              }
+              publish_if (seat_heater_rear_center_select_, lookup_seat_heater_level(val));
             }
             else
             {
@@ -2019,10 +2025,7 @@ namespace esphome
             if (carserver_response.response_msg.vehicleData.climate_state.which_optional_seat_heater_rear_right)
             {
               int32_t val = carserver_response.response_msg.vehicleData.climate_state.optional_seat_heater_rear_right.seat_heater_rear_right;
-              if (seat_heater_rear_right_select_ != nullptr)
-              {
-                seat_heater_rear_right_select_->publish_state(lookup_seat_heater_level(val));
-              }
+              publish_if (seat_heater_rear_right_select_, lookup_seat_heater_level(val));
             }
             else
             {
