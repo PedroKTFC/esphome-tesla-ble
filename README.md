@@ -101,6 +101,7 @@ There are two categories, those available even when asleep and those only when a
   - Odometer (miles)
   - Range (miles)
   - Shift state (eg Invalid, R, N, D)
+  - Software update status and progress (polled every ten data polls; see [one Home Assistant sensor with attributes](./docs/software_update_sensor.md))
   - Tyre pressures (bar). The four sensors - front left, front right, rear left, rear right - are disabled by default. 
   - Windows open/closed
 

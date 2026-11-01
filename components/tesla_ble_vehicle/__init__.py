@@ -103,6 +103,8 @@ SENSORS = {
         icon = "mdi:fan",),
     "windows_state": binary (BinarySensorId.WindowsState,
         icon = "mdi:car-door", device_class = binary_sensor.DEVICE_CLASS_WINDOW,),
+    "software_update_available": binary (BinarySensorId.SoftwareUpdateAvailable,
+        icon = "mdi:download", device_class = binary_sensor.DEVICE_CLASS_UPDATE,),
     "shift_state": text (TextSensorId.ShiftState,
         icon = "mdi:car-shift-pattern",),
     "defrost_state": text (TextSensorId.DefrostState,
@@ -119,6 +121,14 @@ SENSORS = {
         icon = "mdi:surround-sound-3-1", device_class = "", state_class = STATE_CLASS_MEASUREMENT, accuracy_decimals = 0,),
     "charge_rate": numeric (NumericSensorId.ChargeRate,
         icon = "mdi:speedometer", device_class = sensor.DEVICE_CLASS_SPEED, accuracy_decimals = 0, unit_of_measurement = "mph",),
+    "software_update_download_progress": numeric (NumericSensorId.SoftwareUpdateDownloadProgress,
+        icon = "mdi:progress-download", state_class = STATE_CLASS_MEASUREMENT, accuracy_decimals = 0, unit_of_measurement = "%",),
+    "software_update_install_progress": numeric (NumericSensorId.SoftwareUpdateInstallProgress,
+        icon = "mdi:progress-wrench", state_class = STATE_CLASS_MEASUREMENT, accuracy_decimals = 0, unit_of_measurement = "%",),
+    "software_update_state": text (TextSensorId.SoftwareUpdateState,
+        icon = "mdi:update",),
+    "software_update_version": text (TextSensorId.SoftwareUpdateVersion,
+        icon = "mdi:tag-text-outline",),
 }
 
 SENSOR_TYPES_INFO = {
