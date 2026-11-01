@@ -69,6 +69,7 @@ namespace esphome
             SET_CABIN_OVERHEAT_PROTECTION,
             SET_CABIN_OVERHEAT_LIMIT,
             SET_SEAT_HEATER,
+            SET_AUTO_SEAT_CLIMATE,
             _COUNT  // sentinel value to get count of entries
         };
         enum class AllowedMsg // The type of messages to send
@@ -107,7 +108,7 @@ namespace esphome
             GetOnSet getOnSet;
             int numberUpdatesBetweenGets; // Only used for GetVehicleDataMessage
         };
-        static constexpr std::array<ActionMessageDetail, 30> ACTION_SPECIFICS // Don't forget to increase the size when adding a row
+        static constexpr std::array<ActionMessageDetail, 31> ACTION_SPECIFICS // Don't forget to increase the size when adding a row
         {{
             {BLE_CarServer_VehicleAction::DO_NOTHING,                       "",                          AllowedMsg::Empty,                 0,                                                              GetOnSet::Invalid,                0},
             {BLE_CarServer_VehicleAction::GET_CHARGE_STATE,                 "getChargeState",            AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getChargeState_tag,                    GetOnSet::Invalid,                1},
@@ -139,6 +140,7 @@ namespace esphome
             {BLE_CarServer_VehicleAction::SET_CABIN_OVERHEAT_PROTECTION,    "setCabinOverheatProtection",AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_setCabinOverheatProtectionAction_tag,   GetOnSet::GetClimateState,        0},
             {BLE_CarServer_VehicleAction::SET_CABIN_OVERHEAT_LIMIT,         "setCabinOverheatLimit",     AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_setCopTempAction_tag,                   GetOnSet::GetClimateState,        0},
             {BLE_CarServer_VehicleAction::SET_SEAT_HEATER,                  "setSeatHeater",             AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_hvacSeatHeaterActions_tag,              GetOnSet::GetClimateState,        0},
+            {BLE_CarServer_VehicleAction::SET_AUTO_SEAT_CLIMATE,            "setAutoSeatClimate",        AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_autoSeatClimateAction_tag,              GetOnSet::GetClimateState,        0},
         }};
         static_assert(ACTION_SPECIFICS.size() == static_cast<std::size_t>(BLE_CarServer_VehicleAction::_COUNT), "ACTION_SPECIFICS out of sync with enum");
         static const char *const TAG = "tesla_ble_vehicle";
@@ -302,6 +304,7 @@ namespace esphome
             unsigned char static_message_buffer_[UniversalMessage_RoutableMessage_size];
             CarServer_Action actions_action_message_;
             CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction actions_seat_heater_action_;
+            CarServer_AutoSeatClimateAction_CarSeat actions_auto_seat_climate_carseat_;
             /*
             * Tracks the Infotainment connection status. In theory it goes Unknown when the car is away but it can also happen if the
             * BLE connection drops for long enough. If it recovers the car is likely to be asleep and so Infotainment sensors will remain
@@ -478,19 +481,19 @@ namespace esphome
             void set_seat_heater_rear_right_select (select::Select *sel) {
                 seat_heater_rear_right_select_ = sel;
             }
-            inline static constexpr std::pair<int, const char*> SEAT_HEATER_LEVEL_MAP[] = {
+            inline static constexpr std::array<std::pair<int, const char*>, 4> SEAT_HEATER_LEVEL_MAP {{
                 // The car reports seat heater levels as plain integers in ClimateState (there are no tag constants for them)
                 {0, "Off"},
                 {1, "Low"},
                 {2, "Medium"},
                 {3, "High"},
-            };
+            }};
             std::string lookup_seat_heater_level (int level)
             {
-                for (const auto& entry : SEAT_HEATER_LEVEL_MAP)
+                for (const auto& [map_level, label] : SEAT_HEATER_LEVEL_MAP)
                 {
-                    if (entry.first == level)
-                        return entry.second;
+                    if (map_level == level)
+                        return label;
                 }
                 return "Unknown"; // Must be one of the select's options
             }

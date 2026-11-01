@@ -263,13 +263,34 @@ int TeslaBLEVehicle::actions_buildCarServerVehicleActionMessage (
 
 		// hvacSeatHeaterAction is a repeated field, which nanopb generates as a callback, so encode our single entry here
 		vehicle_action_msg_.hvacSeatHeaterActions.hvacSeatHeaterAction.funcs.encode =
-			[](pb_ostream_t *stream, const pb_field_iter_t *field, void * const *arg) -> bool {
+			[](pb_ostream_t *stream, const pb_field_iter_t *field, const auto *arg) -> bool {
 				const auto *act = static_cast<const CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction*>(*arg);
 				if (!pb_encode_tag_for_field(stream, field))
 					return false;
 				return pb_encode_submessage(stream, CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction_fields, act);
 			};
 		vehicle_action_msg_.hvacSeatHeaterActions.hvacSeatHeaterAction.arg = &actions_seat_heater_action_;
+		break;
+	}
+	case CarServer_VehicleAction_autoSeatClimateAction_tag:
+	{
+		vehicle_action_msg_.autoSeatClimateAction = CarServer_AutoSeatClimateAction_init_default;
+
+		// long_param carries the seat position (CarServer_AutoSeatClimateAction_AutoSeatPosition_E)
+		// set_value carries the on/off state (bool: 1 = on, 0 = off)
+		actions_auto_seat_climate_carseat_ = CarServer_AutoSeatClimateAction_CarSeat_init_default;
+		actions_auto_seat_climate_carseat_.on = (set_value != 0);
+		actions_auto_seat_climate_carseat_.seat_position = static_cast<CarServer_AutoSeatClimateAction_AutoSeatPosition_E>(long_param);
+
+		// autoSeatClimateAction.carseat is a repeated field, which nanopb generates as a callback
+		vehicle_action_msg_.autoSeatClimateAction.carseat.funcs.encode =
+			[](pb_ostream_t *stream, const pb_field_iter_t *field, const auto *arg) -> bool {
+				const auto *act = static_cast<const CarServer_AutoSeatClimateAction_CarSeat*>(*arg);
+				if (!pb_encode_tag_for_field(stream, field))
+					return false;
+				return pb_encode_submessage(stream, CarServer_AutoSeatClimateAction_CarSeat_fields, act);
+			};
+		vehicle_action_msg_.autoSeatClimateAction.carseat.arg = &actions_auto_seat_climate_carseat_;
 		break;
 	}
 	default:
