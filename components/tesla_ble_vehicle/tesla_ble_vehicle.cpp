@@ -27,7 +27,7 @@ namespace esphome
     {
       auto *version = static_cast<std::string *>(*arg);
       size_t length = stream->bytes_left;
-      if (version == nullptr || length >= 64)
+      if ((version == nullptr) || (length >= 64))
       {
         return false;
       }
@@ -811,9 +811,15 @@ namespace esphome
         {
           UniversalMessage_MessageFault_E fault = UniversalMessage_MessageFault_E_MESSAGEFAULT_ERROR_NONE;
           static_carserver_response_ = CarServer_Response_init_default;
-          software_update_version_.clear();
-          static_carserver_response_.response_msg.vehicleData.software_update_state.optional_version.version.funcs.decode = decode_software_update_version;
-          static_carserver_response_.response_msg.vehicleData.software_update_state.optional_version.version.arg = &software_update_version_;
+          const bool is_software_update_state_response = !command_queue_.empty() &&
+              command_queue_.front().domain == UniversalMessage_Domain_DOMAIN_INFOTAINMENT &&
+              command_queue_.front().action == BLE_CarServer_VehicleAction::GET_SOFTWARE_UPDATE_STATE;
+          if (is_software_update_state_response)
+          {
+            software_update_version_.clear();
+            static_carserver_response_.response_msg.vehicleData.software_update_state.optional_version.version.funcs.decode = decode_software_update_version;
+            static_carserver_response_.response_msg.vehicleData.software_update_state.optional_version.version.arg = &software_update_version_;
+          }
           int return_code = tesla_ble_client_->parsePayloadCarServerResponse(&read_queue_message_.payload.protobuf_message_as_bytes, &read_queue_message_.sub_sigData.signature_data, 1, fault, &static_carserver_response_);
           if (return_code != 0)
           {
@@ -2088,7 +2094,6 @@ namespace esphome
                   status = "No update available";
                   break;
                 default:
-                  status = "Unknown";
                   break;
               }
             }
