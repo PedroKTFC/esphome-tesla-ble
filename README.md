@@ -66,6 +66,7 @@ These are implemented as switches, covers, buttons or numbers. Where indicated, 
 - Keep accessory power on (switch). This is disabled by default. Note the status is not reported by the car so its status is not reliable. Switching it On or Off will nevertheless cause the request to be sent to the car.
 - Cabin overheat protection (selector). Options are `Off, On, Fan, Unknown` (Unknown cannot be selected, it's here purely to enable a status of `Unknown` - a limitation of ESPHome). Note this control also reflects the current status, there is no equivalent sensor. This is disabled by default.
 - Cabin overheat limit (selector) - does not work for all Tesla software versions, an error will be recorded in the log if so. Options are `Low, Medium, High, Unknown` (Unknown cannot be selected, it's here purely to enable a status of `Unknown` - a limitation of ESPHome). Note this control also reflects the current status, there is no equivalent sensor. This is disabled by default.
+- Seat heaters for front left, front right, rear left, rear center, and rear right (selectors). Options are `Off, Low, Medium, High, Unknown` (Unknown cannot be selected, it's here purely to enable a status of `Unknown` - a limitation of ESPHome). Note this control also reflects the current status, there is no equivalent sensor. This is disabled by default.
 ### Vehicle Information Sensors
 
 There are two categories, those available even when asleep and those only when awake.
@@ -104,6 +105,10 @@ There are two categories, those available even when asleep and those only when a
   - Software update status and progress (polled every 13 data polls; see [one Home Assistant sensor with attributes](./docs/software_update_sensor.md))
   - Tyre pressures (bar). The four sensors - front left, front right, rear left, rear right - are disabled by default. 
   - Windows open/closed
+
+### Charging-data freshness
+
+For automations that must detect stale charging readings, see the optional [charging freshness package](./docs/charging-freshness.md). It exposes per-field receipt timestamps even when the values stay unchanged.
 
 ### Charging schedules
 
@@ -215,6 +220,16 @@ The following is the original method. I have never tried this and I do not maint
 ### Recommended path
 
 For an example ESPHome dashboard, see [`tesla-ble-example.yml`](./tesla-ble.example.yml). Please always start from this. I strongly recommend building this using the ESPHome Device Builder add-on in Home Assistant as this makes building and re-building (eg for updates) much easier.
+
+### Build options
+
+There are a few substitutions that can be changed to affect the build. The following table lists the key ones. [`tesla-ble-example.yml`](./tesla-ble.example.yml) shows how they are used.
+| Name | Default | Supported options | Description |
+| --- | --- | --- | --- |
+|`ota_mode`|password|password, encryption|Enables builds to use the encryption option, thereby saving memory, or the password option. For historical reasons password is the current default. Used in:<br>`ota:1`<br>`  - !include ota-${ota_mode}.yml`|
+|`board`|esp32dev|See the [`wiki`](https://github.com/PedroKTFC/esphome-tesla-ble/wiki/How-to-build-for-different-board-types) for examples|Enables builds to use a different board type. Used in:<br>`esp32:`<br>`  board: $board`|
+|`variant`|ESP32|See the [`wiki`](https://github.com/PedroKTFC/esphome-tesla-ble/wiki/How-to-build-for-different-board-types) for examples|Enables builds to use a different variant type. Used in:<br>`esp32:`<br>`  variant: $variant`|
+
 
 ### Board types
 
