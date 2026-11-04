@@ -53,6 +53,7 @@ tesla_ble_vehicle:
       - multiply: 1.609344
     unit_of_measurement: km
   charging_state:
+    id: "charging_state"
     name: "Laadstatus"
   last_update:
     name: "Laatste update"
