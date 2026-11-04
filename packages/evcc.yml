@@ -81,7 +81,7 @@ text_sensor:
         {"Disconnected", "A"},
         {"Getrennt",     "A"},
         {"Engaged",      "B"},
-        {"Angeschlossen", B"},
+        {"Angeschlossen", "B"},
         {"Stopped",      "B"},
         {"Gestoppt",     "B"},
         {"Complete",     "B"},
