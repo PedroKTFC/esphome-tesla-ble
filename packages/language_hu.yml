@@ -55,6 +55,7 @@ tesla_ble_vehicle:
       - multiply: 1.609344 # miles
     unit_of_measurement: km
   charging_state:
+    id: "charging_state"
     name: "Töltési állapot"
   charge_port_latch_state:
     name: "Töltőnyílás retesz"
