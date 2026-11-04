@@ -58,6 +58,7 @@ tesla_ble_vehicle:
     unit_of_measurement: km
   charging_state:
     name: "Ladezustand"
+    id: charging_state
     filters:
       - substitute:
           - "Disconnected -> Getrennt"
