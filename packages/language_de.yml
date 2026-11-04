@@ -4,21 +4,29 @@
 
 tesla_ble_vehicle:
   is_asleep:
+    id: "is_asleep"
     name: "Im Ruhezustand"
   is_user_present:
+    id: "is_user_present"
     name: "Person erkannt"
   is_unlocked:
+    id: "is_unlocked"
     name: "Entriegelt"
   is_charge_flap_open:
+    id: "is_charge_flap_open"
     icon: mdi:ev-plug-ccs2
     name: "Ladeanschluss"
   is_boot_open:
+    id: "is_boot_open"
     name: "Kofferraum hinten"
   is_frunk_open:
+    id: "is_frunk_open"
     name: "Kofferraum vorne (Frunk)"
   shift_state:
+    id: "shift_state"
     name: "Fahrstufe"
   defrost_state:
+    id: "defrost_state"
     name: "Enteisung"
     filters:
       - substitute:
@@ -26,32 +34,43 @@ tesla_ble_vehicle:
           - "Normal -> Normal"
           - "Max -> Maximal"
   charge_state:
+    id: "charge_state"
     name: "Ladezustand"
   odometer:
+    id: "odometer"
     name: "Kilometerstand"
     filters:
       - multiply: 1.609344
     unit_of_measurement: km
   charge_current:
+    id: "charge_current"
     name: "Ladestrom"
   charge_voltage:
+    id: "charge_voltage"
     name: "Ladespannung"
   charge_power:
+    id: "charge_power"
     name: "Ladeleistung"
   charge_energy_added:
+    id: "charge_energy_added"
     name: "Bezogene Energie"
   charge_distance_added:
+    id: "charge_distance_added"
     name: "Reichweitenzuwachs"
     filters:
       - multiply: 1.609344
     unit_of_measurement: km
   max_soc:
+    id: "max_soc"
     name: "Ladelimit"
   max_amps:
+    id: "max_amps"
     name: "Strombegrenzung"
   mins_to_limit:
+    id: "mins_to_limit"
     name: "Zeit bis Ladeende"
   battery_range:
+    id: "battery_range"
     name: "Reichweite"
     filters:
       - multiply: 1.609344
@@ -69,38 +88,51 @@ tesla_ble_vehicle:
           - "Stopped -> Gestoppt"
           - "No Power -> Kein Strom"
   charge_port_latch_state:
+    id: "charge_port_latch_state"
     name: "Verriegelung Ladeanschluss"
     filters:
       - substitute:
           - "Engaged -> Verriegelt"
           - "Disengaged -> Entriegelt"
   last_update:
+    id: "last_update"
     name: "Zuletzt aktualisiert"
   is_climate_on:
+    id: "is_climate_on"
     name: "Klimaanlage"
   internal_temp:
+    id: "internal_temp"
     name: "Innenraumtemperatur"
   external_temp:
+    id: "external_temp"
     name: "Außentemperatur"
   windows_state:
+    id: "windows_state"
     name: "Fenster"
   tpms_pressure_fl:
+    id: "tpms_pressure_fl"
     name: "Reifendruck vorne links"
   tpms_pressure_fr:
+    id: "tpms_pressure_fr"
     name: "Reifendruck vorne rechts"
   tpms_pressure_rl:
+    id: "tpms_pressure_rl"
     name: "Reifendruck hinten links"
   tpms_pressure_rr:
+    id: "tpms_pressure_rr"
     name: "Reifendruck hinten rechts"
   ble_disconnected_time:
+    id: "ble_disconnected_time"
     name: "Dauer BLE-Trennung"
   charger_phases:
+    id: "charger_phases"
     name: "Ladephasen"
   charge_rate:
+    id: "charge_rate"
     name: "Ladegeschwindigkeit"
   driver_temp:
+    id: "driver_temp"
     name: "Klimatemperatur"
-
 button:
   - id: !extend ble_pair
     name: "BLE-Schlüsselpaarung"
