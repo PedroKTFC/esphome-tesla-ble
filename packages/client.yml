@@ -804,7 +804,7 @@ select:
     set_action:
       - if:
           condition:
-            lambda: 'return (x != "Off" && x != "Unknown" && !id(is_climate_on).state);'
+            lambda: 'return ((x != "Off") && (x != "Unknown") && !id(is_climate_on).state);'
           then:
             - switch.turn_on: sw_climate
       - lambda: |-
@@ -853,7 +853,7 @@ select:
     set_action:
       - if:
           condition:
-            lambda: 'return (x != "Off" && x != "Unknown" && !id(is_climate_on).state);'
+            lambda: 'return ((x != "Off") && (x != "Unknown") && !id(is_climate_on).state);'
           then:
             - switch.turn_on: sw_climate
       - lambda: |-
@@ -901,7 +901,7 @@ select:
     set_action:
       - if:
           condition:
-            lambda: 'return (x != "Off" && x != "Unknown" && !id(is_climate_on).state);'
+            lambda: 'return ((x != "Off") && (x != "Unknown") && !id(is_climate_on).state);'
           then:
             - switch.turn_on: sw_climate
       - lambda: |-
@@ -940,7 +940,7 @@ select:
     set_action:
       - if:
           condition:
-            lambda: 'return (x != "Off" && x != "Unknown" && !id(is_climate_on).state);'
+            lambda: 'return ((x != "Off") && (x != "Unknown") && !id(is_climate_on).state);'
           then:
             - switch.turn_on: sw_climate
       - lambda: |-
@@ -979,7 +979,7 @@ select:
     set_action:
       - if:
           condition:
-            lambda: 'return (x != "Off" && x != "Unknown" && !id(is_climate_on).state);'
+            lambda: 'return ((x != "Off") && (x != "Unknown") && !id(is_climate_on).state);'
           then:
             - switch.turn_on: sw_climate
       - lambda: |-

@@ -1392,21 +1392,41 @@ namespace esphome
                                                std::function<int()> execute,
                                                std::string execute_name,
                                                BLE_CarServer_VehicleAction action)
+    /*
+    *   Places a new action command into command_queue_ ahead of any idle non-action (polling)
+    *   commands, while keeping action commands in strict FIFO order (new action commands go
+    *   behind any already-queued action commands).
+    *
+    *   Since all action commands are queued via this function, any existing action commands are
+    *   already grouped at the front of the queue, followed by non-action polling commands.
+    *   Therefore, we only need to find the first idle non-action command and insert the new
+    *   action command immediately before it.
+    *
+    *   Because std::queue only supports popping from the front and pushing to the back, we
+    *   cycle through the existing queue elements one full rotation (popping from the front and
+    *   pushing to the back) and emplace the new command just before re-pushing the first idle
+    *   non-action command we encounter.
+    */
     {
       if (command_queue_.empty())
-      {
+      { // Queue is empty, place new command and nothing more to do
         command_queue_.emplace (domain, execute, execute_name, action);
         return;
       }
 
+      // Helper to identify whether a queued command is an action command (true) or a background poll (false)
       auto is_action_cmd = [this](const BLECommand &c) {
-        if (c.action != BLE_CarServer_VehicleAction::DO_NOTHING &&
-            c.action < BLE_CarServer_VehicleAction::_COUNT &&
-            get_action_detail(c.action).whichMsg == AllowedMsg::VehicleActionMessage)
+        // Infotainment VehicleActionMessage commands (e.g. climate, seat heaters, charging, etc.)
+        if ((c.action != BLE_CarServer_VehicleAction::DO_NOTHING) &&
+            (c.action < BLE_CarServer_VehicleAction::_COUNT) &&
+            (get_action_detail(c.action).whichMsg == AllowedMsg::VehicleActionMessage))
           return true;
-        if (c.domain == UniversalMessage_Domain_DOMAIN_VEHICLE_SECURITY)
+        // VCSEC security actions (wake, lock, unlock), excluding background "data update" status polls
+        if ((c.domain == UniversalMessage_Domain_DOMAIN_VEHICLE_SECURITY) &&
+            (c.execute_name != "data update"))
           return true;
-        if (c.execute_name == "wake vehicle")
+        // Charge schedule action (which does not use a BLE_CarServer_VehicleAction enum value)
+        if (c.execute_name == "set_charge_schedule")
           return true;
         return false;
       };
@@ -1414,20 +1434,35 @@ namespace esphome
       size_t original_size = command_queue_.size();
       bool inserted = false;
 
+      // Rotate all existing elements from front to back to preserve their relative order
       for (size_t i = 0; i < original_size; i++)
       {
         BLECommand moving_command = command_queue_.front();
         command_queue_.pop();
 
-        if (!inserted && moving_command.state == BLECommandState::IDLE && !is_action_cmd(moving_command))
+        /*
+        *   If we haven't inserted the new command yet, check if moving_command is the first
+        *   idle non-action command. (If a command at the front is already in progress, its
+        *   state != IDLE, so it stays ahead of the new command to finish executing.)
+        *   Any existing action commands will have is_action_cmd() == true and will also stay
+        *   ahead of the new command.
+        */
+        if (!inserted && (moving_command.state == BLECommandState::IDLE) && !is_action_cmd(moving_command))
         {
+          // Insert the new action command immediately before the first idle non-action command
           command_queue_.emplace (domain, execute, execute_name, action);
           inserted = true;
         }
 
+        // Re-push the existing command to the back as part of the full queue rotation
         command_queue_.push(moving_command);
       }
 
+      /*
+      *   If the queue only contained action commands (or an in-progress command with no idle
+      *   non-action commands behind it), we won't have found a non-action command to insert
+      *   before, so append the new action command at the back (behind all existing actions).
+      */
       if (!inserted)
       {
         command_queue_.emplace (domain, execute, execute_name, action);
