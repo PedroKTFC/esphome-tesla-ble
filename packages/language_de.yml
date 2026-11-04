@@ -35,7 +35,7 @@ tesla_ble_vehicle:
           - "Max -> Maximal"
   charge_state:
     id: "charge_state"
-    name: "Ladezustand"
+    name: "Ladestand"
   odometer:
     id: "odometer"
     name: "Kilometerstand"
