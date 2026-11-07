@@ -3,6 +3,7 @@
 # - use km. instead of mi for distance units by default
 
 tesla_ble_vehicle:
+  id: tesla_ble_vehicle_id
   is_asleep:
     name: "Im Ruhezustand"
   is_user_present:
