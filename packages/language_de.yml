@@ -27,7 +27,7 @@ tesla_ble_vehicle:
           - "Normal -> Normal"
           - "Max -> Maximal"
   charge_state:
-    name: "Ladezustand"
+    name: "Ladestand"
   odometer:
     name: "Kilometerstand"
     filters:
