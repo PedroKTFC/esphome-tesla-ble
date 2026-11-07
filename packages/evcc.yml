@@ -89,7 +89,7 @@ text_sensor:
         {"Charging",     "C"},
         {"Lädt",         "C"},
         {"Starting",     "C"},
-        {"STartet",      "C"}
+        {"Startet",      "C"}
       };
 
       const std::string& current_raw = id(charging_state).state;
