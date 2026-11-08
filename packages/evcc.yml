@@ -79,10 +79,17 @@ text_sensor:
     lambda: |-
       static const std::map<std::string, std::string> mapping = {
         {"Disconnected", "A"},
+        {"Getrennt",     "A"},
+        {"Engaged",      "B"},
+        {"Angeschlossen", "B"},
         {"Stopped",      "B"},
+        {"Gestoppt",     "B"},
         {"Complete",     "B"},
+        {"Fertig",       "B"},
         {"Charging",     "C"},
-        {"Starting",     "C"}
+        {"Lädt",         "C"},
+        {"Starting",     "C"},
+        {"Startet",      "C"}
       };
 
       const std::string& current_raw = id(charging_state).state;
