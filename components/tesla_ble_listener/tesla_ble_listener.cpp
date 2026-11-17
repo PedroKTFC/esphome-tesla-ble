@@ -10,6 +10,21 @@ namespace esphome
   {
     static const char *const TAG = "tesla_ble_listener";
 
+    void TeslaBLEListener::setup()
+    {
+      this->set_timeout ("startup_log", 10000, [this]()
+      {
+        this->dump_configuration();
+      });
+    }
+
+    void TeslaBLEListener::dump_configuration()
+    {
+      ESP_LOGI (TAG, "Configured VIN: %s", this->vin_.c_str());
+      ESP_LOGI (TAG, "VIN advertisement name: %s", this->vin_ad_name_.c_str());
+      ESP_LOGI (TAG, "Configured MAC address: %s", this->expected_mac_.empty() ? "Not configured" : this->expected_mac_.c_str());
+    }
+
     std::string get_vin_advertisement_name(const char *vin)
     {
       // * BLE advertisement local name: `S + <ID> + C`, where `<ID>` is the
@@ -43,12 +58,26 @@ namespace esphome
 
     bool TeslaBLEListener::parse_device(const esp32_ble_tracker::ESPBTDevice &device)
     {
-      ESP_LOGD(TAG, "Parsing device: [%s]: %s", device.address_str().c_str(), device.get_name().c_str());
+      const std::string device_name = device.get_name();
+      const std::string device_mac = device.address_str();
 
-      if (device.get_name() == this->vin_ad_name_)
+      ESP_LOGD(TAG, "Parsing device: [%s]: %s", device.address_str().c_str(), device_name.c_str());
+
+      if (device_name == this->vin_ad_name_)
       {
         ESP_LOGI(TAG, "Found Tesla vehicle | Name: %s | MAC: %s", device.get_name().c_str(), device.address_str().c_str());
         return true;
+      }
+      // Only report a VIN mismatch when the MAC address identifies
+      // the vehicle we are expecting.
+      if ((!this->expected_mac_.empty()) &&
+          (device_mac == this->expected_mac_) &&
+          (device_name.length() == 18) &&
+          (device_name.front() == 'S') &&
+          (device_name.back() == 'C'))
+      {
+        ESP_LOGW(TAG, "Possible VIN mismatch! MAC matches configured vehicle but advertisement name differs. Expected: %s | Actual: %s",
+                 this->vin_ad_name_.c_str(), device_name.c_str());
       }
 
       return false;
