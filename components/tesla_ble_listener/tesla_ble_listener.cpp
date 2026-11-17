@@ -59,13 +59,14 @@ namespace esphome
     bool TeslaBLEListener::parse_device(const esp32_ble_tracker::ESPBTDevice &device)
     {
       const std::string device_name = device.get_name();
-      const std::string device_mac = device.address_str();
-
+      char device_mac_buffer[18];
+      device.address_str_to (device_mac_buffer);
+      const std::string device_mac (device_mac_buffer);
       ESP_LOGD(TAG, "Parsing device: [%s]: %s", device.address_str().c_str(), device_name.c_str());
 
       if (device_name == this->vin_ad_name_)
       {
-        ESP_LOGI(TAG, "Found Tesla vehicle | Name: %s | MAC: %s", device.get_name().c_str(), device.address_str().c_str());
+        ESP_LOGI(TAG, "Found Tesla vehicle | Name: %s | MAC: %s", device.get_name().c_str(), device_mac.c_str());
         return true;
       }
       // Only report a VIN mismatch when the MAC address identifies
