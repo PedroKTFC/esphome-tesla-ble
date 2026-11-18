@@ -485,8 +485,9 @@ namespace esphome
       if (buffer_len_post_append > MAX_BLE_MESSAGE_SIZE)
       {
         ESP_LOGE(TAG, "BLE RX: Message length (%d) exceeds max BLE message size", buffer_len_post_append);
-        // clear buffer
+        // clear buffer & remove offending chunk otherwise we'll loop forever
         this->ble_read_buffer_.clear();
+        this->ble_read_queue_.pop();
         return;
       }
 
