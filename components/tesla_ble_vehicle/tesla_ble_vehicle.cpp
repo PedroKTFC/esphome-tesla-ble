@@ -193,8 +193,10 @@ namespace esphome
         }
         break;
       case BLECommandState::WAITING_FOR_INFOTAINMENT_AUTH:
-        if (now - current_command.last_tx_at > MAX_LATENCY)
+        if ((now - current_command.last_tx_at) > MAX_LATENCY)
         {
+ESP_LOGW (TAG, "\033[36m[%s] INFOTAINMENT auth check | retry = %d | asleep = %d",
+          current_command.execute_name.c_str(), current_command.retry_count, binary_sensors_[static_cast<size_t>(BinarySensorId::IsAsleep)]->state);
           if (!binary_sensors_[static_cast<size_t>(BinarySensorId::IsAsleep)]->state == false)
           {
             ESP_LOGW(TAG, "[%s] Car is asleep, initiating wake..", current_command.execute_name.c_str());
@@ -203,20 +205,22 @@ namespace esphome
           else
           {
             auto session = tesla_ble_client_->getPeer(UniversalMessage_Domain_DOMAIN_INFOTAINMENT);
+ESP_LOGW (TAG, "\033[36m[%s] INFOTAINMENT peer = %p, initialized = %d",
+          current_command.execute_name.c_str(), session, session->isInitialized());
             if (session->isInitialized())
             {
-              ESP_LOGD(TAG, "[%s] INFOTAINMENT authenticated", current_command.execute_name.c_str());
+ESP_LOGW (TAG, "[%s] INFOTAINMENT authenticated", current_command.execute_name.c_str());
               current_command.state = BLECommandState::READY;
             }
             else
             {
               ESP_LOGW(TAG, "[%s] INFOTAINMENT auth expired, refreshing session..", current_command.execute_name.c_str());
               current_command.retry_count++;
-              ESP_LOGD(TAG, "[%s] Waiting for INFOTAINMENT auth.. | attempt %d/%d", current_command.execute_name.c_str(), current_command.retry_count, MAX_RETRIES);
+ESP_LOGW (TAG, "[%s] Waiting for INFOTAINMENT auth.. | attempt %d/%d", current_command.execute_name.c_str(), current_command.retry_count, MAX_RETRIES);
               if (current_command.retry_count <= MAX_RETRIES)
               {
-                sendSessionInfoRequest(UniversalMessage_Domain_DOMAIN_INFOTAINMENT);
-                //sendSessionInfoRequest(UniversalMessage_Domain_DOMAIN_INFOTAINMENT); // Original had line duplicated. Removed but left commented in case there was a reason for it
+int result = sendSessionInfoRequest(UniversalMessage_Domain_DOMAIN_INFOTAINMENT);
+ESP_LOGW (TAG, "[%s] sendSessionInfoRequest returned %d", current_command.execute_name.c_str(), result);
                 current_command.last_tx_at = now;
                 current_command.state = BLECommandState::WAITING_FOR_INFOTAINMENT_AUTH_RESPONSE;
               }
@@ -438,10 +442,12 @@ namespace esphome
       BLETXChunk chunk_ = this->ble_write_queue_.front();
       int gattc_if = this->parent()->get_gattc_if();
       uint16_t conn_id = this->parent()->get_conn_id();
+ESP_LOGD (TAG, "BLE GATT TX | conn_id = %d | handle = %d | length = %d | queue = %d",
+          conn_id, this->write_handle_, chunk_.data.size(), this->ble_write_queue_.size());
       esp_err_t err = esp_ble_gattc_write_char(gattc_if, conn_id, this->write_handle_, chunk_.data.size(), chunk_.data.data(), chunk_.write_type, chunk_.auth_req);
       if (err)
       {
-        ESP_LOGW(TAG, "Error sending write value to BLE gattc server, error=%d", err);
+ESP_LOGE (TAG, "BLE GATT write failed, error = %s (%d)", esp_err_to_name (err), err);
       }
       else
       {
@@ -474,11 +480,10 @@ namespace esphome
       ESP_LOGV(TAG, "BLE RX: Appending new data to read buffer");
       this->ble_read_buffer_.insert(this->ble_read_buffer_.end(), chunk_.buffer.begin(), chunk_.buffer.end());
       this->ble_read_queue_.pop();
-
+int message_length;
       if (this->ble_read_buffer_.size() >= 2)
       {
-        int message_length = (this->ble_read_buffer_.front() << 8) | this->ble_read_buffer_.at(1);
-
+        message_length = (this->ble_read_buffer_.front() << 8) | this->ble_read_buffer_.at(1);
         if (this->ble_read_buffer_.size() >= 2 + message_length)
         {
           ESP_LOGD(TAG, "BLE RX: %s", format_hex(this->ble_read_buffer_.data(), this->ble_read_buffer_.size()).c_str());
@@ -494,15 +499,19 @@ namespace esphome
         ESP_LOGW(TAG, "BLE RX: Not enough data to determine message length");
         return;
       }
+ESP_LOGW (TAG, "Attempting to parse UniversalMessage | buffer length = %d | expected = %d",
+          this->ble_read_buffer_.size(), 2 + message_length);
       read_queue_message_ = UniversalMessage_RoutableMessage_init_default;
       int return_code = tesla_ble_client_->parseUniversalMessageBLE (this->ble_read_buffer_.data(), this->ble_read_buffer_.size(), &read_queue_message_);
       if (return_code != 0)
       {
         this->ble_read_buffer_.clear();         // This will set the size to 0 
-        ESP_LOGW(TAG, "BLE RX: Failed to parse incoming message");
+ESP_LOGE (TAG, "BLE RX: Failed to parse UniversalMessage, return code = %d", return_code);
         return; // Parsing has failed so don't add it to the response queue and let the command time out
       }
-      ESP_LOGD(TAG, "BLE RX: Parsed UniversalMessage");
+ESP_LOGW (TAG, "BLE RX: Successfully parsed UniversalMessage | payload = %d | source = %d | destination = %d",
+          read_queue_message_.which_payload, read_queue_message_.from_destination.which_sub_destination,
+          read_queue_message_.to_destination.which_sub_destination);
       // clear read buffer
       this->ble_read_buffer_.clear();         // This will set the size to 0
 
@@ -1281,22 +1290,24 @@ namespace esphome
 
     int TeslaBLEVehicle::sendSessionInfoRequest(UniversalMessage_Domain domain)
     {
+ESP_LOGW (TAG, "Building SessionInfoRequest for %s", domain_to_string(domain));
       unsigned char message_buffer[UniversalMessage_RoutableMessage_size];
       size_t message_length = 0;
       int return_code = tesla_ble_client_->buildSessionInfoRequestMessage(domain, message_buffer, &message_length);
-
+ESP_LOGW (TAG, "buildSessionInfoRequestMessage returned %d, length = %d", return_code, message_length);
       if (return_code != 0)
       {
         ESP_LOGE(TAG, "Failed to build whitelist message");
         return return_code;
       }
-
+ESP_LOGW (TAG, "SessionInfoRequest: %s", format_hex(message_buffer, message_length).c_str());
       return_code = writeBLE(message_buffer, message_length, ESP_GATT_WRITE_TYPE_NO_RSP, ESP_GATT_AUTH_REQ_NONE);
       if (return_code != 0)
       {
-        ESP_LOGE(TAG, "Failed to send SessionInfoRequest");
+        ESP_LOGE (TAG, "Failed to queue SessionInfoRequest for %s", domain_to_string(domain));
         return return_code;
       }
+ESP_LOGW (TAG, "SessionInfoRequest queued for BLE transmission (%d bytes)", message_length);
       return 0;
     }
 
@@ -1607,7 +1618,7 @@ namespace esphome
     int TeslaBLEVehicle::handleSessionInfoUpdate(const UniversalMessage_RoutableMessage& message, UniversalMessage_Domain domain)
     {
       const char* domain_str = domain_to_string(domain);
-      ESP_LOGD(TAG, "Received session info update from domain %s", domain_str);
+ESP_LOGW (TAG, "Processing SessionInfo response from %s", domain_str);
       auto session = tesla_ble_client_->getPeer(domain);
       if (!session)
       {
@@ -1615,24 +1626,27 @@ namespace esphome
         return -1;
       }
       // parse session info
+ESP_LOGW (TAG, "Parsing SessionInfo payload for %s", domain_str);
       Signatures_SessionInfo session_info = Signatures_SessionInfo_init_default;
       int return_code = tesla_ble_client_->parsePayloadSessionInfo (const_cast<UniversalMessage_RoutableMessage_session_info_t*>(&message.payload.session_info), &session_info);
+ESP_LOGW (TAG, "parsePayloadSessionInfo returned %d", return_code);
       if (return_code != 0)
       {
         ESP_LOGE(TAG, "Failed to parse session info response");
         return return_code;
       }
+ESP_LOGW (TAG, "SessionInfo received | domain = %s | status = %d", domain_str, session_info.status);
       log_session_info(TAG, &session_info);
       switch (session_info.status)
       {
       case Signatures_Session_Info_Status_SESSION_INFO_STATUS_OK:
-        ESP_LOGD(TAG, "Session is valid: key paired with vehicle");
+ESP_LOGW (TAG, "Session is valid: key paired with vehicle");
         break;
       case Signatures_Session_Info_Status_SESSION_INFO_STATUS_KEY_NOT_ON_WHITELIST:
         ESP_LOGE(TAG, "Session is invalid: Key not on whitelist");
         return 1;
       };
-      ESP_LOGD(TAG, "Updating session info..");
+ESP_LOGW (TAG, "Updating %s session info..", domain_str);
       return_code = session->updateSession(&session_info);
       if (return_code != 0)
       {
@@ -1644,6 +1658,10 @@ namespace esphome
       if (return_code != 0)
       {
         ESP_LOGE(TAG, "Failed to save %s session info to NVS", domain_str);
+      }
+      else
+      {
+ESP_LOGW (TAG, "Successfully saved %s session info to NVS", domain_str);
       }
       if (!command_queue_.empty())
       {
@@ -2186,10 +2204,6 @@ namespace esphome
         if (param->open.status == ESP_GATT_OK)
         {
           ESP_LOGI(TAG, "Connected successfully!");
-//          this->status_clear_warning();
-//          ble_disconnected_ = BleConnected;
-//          number_updates_since_connection_ = 0; //Reset update loop counter
-//          publishSensor (NumericSensorId::BleDisconnectedTime, 0);
           // generate random connection id 16 bytes
           pb_byte_t connection_id[16];
           for (int i = 0; i < 16; i++)
@@ -2320,6 +2334,8 @@ namespace esphome
         break;
       }
       case ESP_GATTC_WRITE_CHAR_EVT:
+ESP_LOGD (TAG, "BLE GATT WRITE complete | conn_id = %d | handle = %d | status = %d",
+          param->write.conn_id, param->write.handle, param->write.status);
         if (param->write.status != ESP_GATT_OK)
         {
           ESP_LOGE(TAG, "write char failed, error status = %x", param->write.status);
@@ -2335,6 +2351,8 @@ namespace esphome
           ESP_LOGW(TAG, "Received notify from unknown connection");
           break;
         }
+ESP_LOGW (TAG, "BLE notification received | conn_id = %d | handle =%d | length=%d",
+          param->notify.conn_id, param->notify.handle, param->notify.value_len);
         ESP_LOGV(TAG, "RAM left: %ld, minimum was: %ld", esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
         // copy notify value to buffer
         ble_read_queue_.emplace(param->notify.value, param->notify.value + param->notify.value_len);
