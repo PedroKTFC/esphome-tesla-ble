@@ -1,5 +1,6 @@
 #include <esp_random.h>
 #include <esphome/core/helpers.h>
+#include <esphome/core/alloc_helpers.h>
 #include <esphome/core/log.h>
 #include <nvs_flash.h>
 #include <pb_decode.h>
