@@ -1,7 +1,8 @@
 #include <inttypes.h>
 #include <string.h>
 
-#include <esphome/core/helpers.h>
+#include <esphome/core/helpers.h>.
+#include <esphome/core/alloc_helpers.h>
 #include <esphome/core/log.h>
 
 #include <car_server.pb.h>
