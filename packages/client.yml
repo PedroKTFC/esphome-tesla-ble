@@ -199,18 +199,23 @@ tesla_ble_vehicle:
   software_update_available:
     id: "software_update_available"
     name: "Software update available"
+    disabled_by_default: true
   software_update_state:
     id: "software_update_state"
     name: "Software update state"
+    disabled_by_default: true
   software_update_version:
     id: "software_update_version"
     name: "Software update version"
+    disabled_by_default: true
   software_update_download_progress:
     id: "software_update_download_progress"
     name: "Software update download progress"
+    disabled_by_default: true
   software_update_install_progress:
     id: "software_update_install_progress"
     name: "Software update install progress"
+    disabled_by_default: true
 
 button:
   - platform: template
