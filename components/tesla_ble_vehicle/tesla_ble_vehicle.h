@@ -68,6 +68,9 @@ namespace esphome
             DEL_CHARGING_SCHEDULE,
             SET_CABIN_OVERHEAT_PROTECTION,
             SET_CABIN_OVERHEAT_LIMIT,
+            SET_SEAT_HEATER,
+            SET_AUTO_SEAT_CLIMATE,
+            GET_SOFTWARE_UPDATE_STATE,
             _COUNT  // sentinel value to get count of entries
         };
         enum class AllowedMsg // The type of messages to send
@@ -106,7 +109,7 @@ namespace esphome
             GetOnSet getOnSet;
             int numberUpdatesBetweenGets; // Only used for GetVehicleDataMessage
         };
-        static constexpr std::array<ActionMessageDetail, 29> ACTION_SPECIFICS // Don't forget to increase the size when adding a row
+        static constexpr std::array<ActionMessageDetail, 32> ACTION_SPECIFICS // Don't forget to increase the size when adding a row
         {{
             {BLE_CarServer_VehicleAction::DO_NOTHING,                       "",                          AllowedMsg::Empty,                 0,                                                              GetOnSet::Invalid,                0},
             {BLE_CarServer_VehicleAction::GET_CHARGE_STATE,                 "getChargeState",            AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getChargeState_tag,                    GetOnSet::Invalid,                1},
@@ -137,6 +140,9 @@ namespace esphome
             {BLE_CarServer_VehicleAction::DEL_CHARGING_SCHEDULE,            "delChargingSchedule",       AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_removeChargeScheduleAction_tag,         GetOnSet::GetChargeScheduleState, 0},
             {BLE_CarServer_VehicleAction::SET_CABIN_OVERHEAT_PROTECTION,    "setCabinOverheatProtection",AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_setCabinOverheatProtectionAction_tag,   GetOnSet::GetClimateState,        0},
             {BLE_CarServer_VehicleAction::SET_CABIN_OVERHEAT_LIMIT,         "setCabinOverheatLimit",     AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_setCopTempAction_tag,                   GetOnSet::GetClimateState,        0},
+            {BLE_CarServer_VehicleAction::SET_SEAT_HEATER,                  "setSeatHeater",             AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_hvacSeatHeaterActions_tag,              GetOnSet::GetClimateState,        0},
+            {BLE_CarServer_VehicleAction::SET_AUTO_SEAT_CLIMATE,            "setAutoSeatClimate",        AllowedMsg::VehicleActionMessage,  CarServer_VehicleAction_autoSeatClimateAction_tag,              GetOnSet::GetClimateState,        0},
+            {BLE_CarServer_VehicleAction::GET_SOFTWARE_UPDATE_STATE,        "getSoftwareUpdateState",    AllowedMsg::GetVehicleDataMessage, CarServer_GetVehicleData_getSoftwareUpdateState_tag,           GetOnSet::Invalid,               13},
         }};
         static_assert(ACTION_SPECIFICS.size() == static_cast<std::size_t>(BLE_CarServer_VehicleAction::_COUNT), "ACTION_SPECIFICS out of sync with enum");
         static const char *const TAG = "tesla_ble_vehicle";
@@ -237,6 +243,7 @@ namespace esphome
             IsFrunkOpen,
             IsClimateOn,
             WindowsState,
+            SoftwareUpdateAvailable,
             Count
         };
         enum class TextSensorId : uint8_t {
@@ -245,6 +252,8 @@ namespace esphome
             ChargingState,
             ChargePortLatchState,
             LastUpdate,
+            SoftwareUpdateState,
+            SoftwareUpdateVersion,
             Count
         };
         enum class NumericSensorId : uint8_t {
@@ -269,6 +278,8 @@ namespace esphome
             ChargerPhases,
             ChargeRate,
             DriverTemp,
+            SoftwareUpdateDownloadProgress,
+            SoftwareUpdateInstallProgress,
             Count
         };
 
@@ -299,6 +310,8 @@ namespace esphome
             CarServer_Response static_carserver_response_;
             unsigned char static_message_buffer_[UniversalMessage_RoutableMessage_size];
             CarServer_Action actions_action_message_;
+            CarServer_HvacSeatHeaterActions_HvacSeatHeaterAction actions_seat_heater_action_;
+            CarServer_AutoSeatClimateAction_CarSeat actions_auto_seat_climate_carseat_;
             /*
             * Tracks the Infotainment connection status. In theory it goes Unknown when the car is away but it can also happen if the
             * BLE connection drops for long enough. If it recovers the car is likely to be asleep and so Infotainment sensors will remain
@@ -398,7 +411,20 @@ namespace esphome
                     if (s) s->publish_state("Unknown");
                 for (auto* s : binary_sensors_)
                     if (s) s->invalidate_state();
-                cabin_overheat_select_->publish_state("Unknown");
+                if (cabin_overheat_select_)
+                    cabin_overheat_select_->publish_state("Unknown");
+                if (cabin_overheat_temp_select_)
+                    cabin_overheat_temp_select_->publish_state("Unknown");
+                if (seat_heater_front_left_select_)
+                    seat_heater_front_left_select_->publish_state("Unknown");
+                if (seat_heater_front_right_select_)
+                    seat_heater_front_right_select_->publish_state("Unknown");
+                if (seat_heater_rear_left_select_)
+                    seat_heater_rear_left_select_->publish_state("Unknown");
+                if (seat_heater_rear_center_select_)
+                    seat_heater_rear_center_select_->publish_state("Unknown");
+                if (seat_heater_rear_right_select_)
+                    seat_heater_rear_right_select_->publish_state("Unknown");
                 infotainment_state_unknown_ = true;
             }
             template<typename E>
@@ -446,6 +472,37 @@ namespace esphome
             }
             void set_cabin_overheat_temp_select (select::Select *sel) {
                 cabin_overheat_temp_select_ = sel;
+            }
+            void set_seat_heater_front_left_select (select::Select *sel) {
+                seat_heater_front_left_select_ = sel;
+            }
+            void set_seat_heater_front_right_select (select::Select *sel) {
+                seat_heater_front_right_select_ = sel;
+            }
+            void set_seat_heater_rear_left_select (select::Select *sel) {
+                seat_heater_rear_left_select_ = sel;
+            }
+            void set_seat_heater_rear_center_select (select::Select *sel) {
+                seat_heater_rear_center_select_ = sel;
+            }
+            void set_seat_heater_rear_right_select (select::Select *sel) {
+                seat_heater_rear_right_select_ = sel;
+            }
+            inline static constexpr std::array<std::pair<int, const char*>, 4> SEAT_HEATER_LEVEL_MAP {{
+                // The car reports seat heater levels as plain integers in ClimateState (there are no tag constants for them)
+                {0, "Off"},
+                {1, "Low"},
+                {2, "Medium"},
+                {3, "High"},
+            }};
+            std::string lookup_seat_heater_level (int level)
+            {
+                for (const auto& [map_level, label] : SEAT_HEATER_LEVEL_MAP)
+                {
+                    if (map_level == level)
+                        return label;
+                }
+                return "Unknown"; // Must be one of the select's options
             }
             inline static constexpr std::pair<int, const char*> SHIFT_MAP[] = {
                 {CarServer_ShiftState_Invalid_tag,  "Invalid"},
@@ -541,6 +598,7 @@ namespace esphome
             uint16_t write_handle_{0};
             pb_size_t charging_state_raw_ {CarServer_ChargeState_ChargingState_Unknown_tag}; // We need the raw state as the text could be translated
             std::string schedules_json_;
+            std::string software_update_version_;
 
             espbt::ESPBTUUID service_uuid_;
             espbt::ESPBTUUID read_uuid_;
@@ -557,6 +615,11 @@ namespace esphome
             switch_::Switch *defrost_switch_{nullptr};
             select::Select  *cabin_overheat_select_{nullptr};
             select::Select  *cabin_overheat_temp_select_{nullptr};
+            select::Select  *seat_heater_front_left_select_{nullptr};
+            select::Select  *seat_heater_front_right_select_{nullptr};
+            select::Select  *seat_heater_rear_left_select_{nullptr};
+            select::Select  *seat_heater_rear_center_select_{nullptr};
+            select::Select  *seat_heater_rear_right_select_{nullptr};
             std::vector<unsigned char> ble_read_buffer_;
 
             void initializeFlash();

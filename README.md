@@ -66,6 +66,7 @@ These are implemented as switches, covers, buttons or numbers. Where indicated, 
 - Keep accessory power on (switch). This is disabled by default. Note the status is not reported by the car so its status is not reliable. Switching it On or Off will nevertheless cause the request to be sent to the car.
 - Cabin overheat protection (selector). Options are `Off, On, Fan, Unknown` (Unknown cannot be selected, it's here purely to enable a status of `Unknown` - a limitation of ESPHome). Note this control also reflects the current status, there is no equivalent sensor. This is disabled by default.
 - Cabin overheat limit (selector) - does not work for all Tesla software versions, an error will be recorded in the log if so. Options are `Low, Medium, High, Unknown` (Unknown cannot be selected, it's here purely to enable a status of `Unknown` - a limitation of ESPHome). Note this control also reflects the current status, there is no equivalent sensor. This is disabled by default.
+- Seat heaters for front left, front right, rear left, rear center, and rear right (selectors). Options for front seats are `Off, Low, Medium, High, Auto, Unknown`; rear seats are `Off, Low, Medium, High, Unknown` (Unknown cannot be selected, it's here purely to enable a status of `Unknown` - a limitation of ESPHome). Note this control also reflects the current status, there is no equivalent sensor. Turning on any seat heater will automatically turn on climate first if it is currently off. This is disabled by default.
 ### Vehicle Information Sensors
 
 There are two categories, those available even when asleep and those only when awake.
@@ -75,11 +76,11 @@ There are two categories, those available even when asleep and those only when a
   - Doors locked/unlocked
   - User present/not present
 - Only when awake:
-  - Boot state open/closed
+  - Boot state (open/closed)
   - Charge current (Amps)
   - Charge distance added (miles)
   - Charge energy added (kWh)
-  - Charging flap open/closed
+  - Charging flap (open/closed)
   - Charge level (%)
   - Charge limit (%)
   - Charge power (kW)
@@ -88,21 +89,30 @@ There are two categories, those available even when asleep and those only when a
   - Charge voltage (V)
   - Charger phases (1 or 3). Disabled by default.
   - Charging state (eg Stopped, Charging, Complete)
-  - Climate on/off
+  - Climate (on/off)
   - Climate temperature (°C). Note this is actually the driver's temperature setting.
   - Current limit setting (Amps)
-  - Defrost state on/off
-  - Doors locked/unlocked
+  - Defrost state (on/off)
+  - Doors (locked/unlocked)
   - Exterior temperature (°C)
-  - Frunk open/closed
+  - Frunk (open/closed)
   - Interior temperature (°C)
   - Last update (the last time a response was received from the Infotainment system, does not go "Unknown" once a response has been received)
   - Minutes to limit (time to charge limit, multiples of 5 minutes)
   - Odometer (miles)
   - Range (miles)
   - Shift state (eg Invalid, R, N, D)
+  - Software update available (Update available/Up-to-date). Disabled by default.
+  - Software update download progress (%). Disabled by default.
+  - Software update install progress (%). Disabled by default.
+  - Software update state. Disabled by default.
+  - Software update version. Disabled by default.
   - Tyre pressures (bar). The four sensors - front left, front right, rear left, rear right - are disabled by default. 
-  - Windows open/closed
+  - Windows (open/closed)
+
+### Combining software update sensors into a single sensor with attributes
+
+The software update sensors are polled every 13 data polls. To combine these sensors into a single sensor with sensor attributes, see [One Home Assistant sensor with attributes](./docs/software_update_sensor.md).
 
 ### Charging-data freshness
 

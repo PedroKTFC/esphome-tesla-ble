@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cstring>
 #include <ctime>
+#include <type_traits>
 
 #include <car_server.pb.h>
 #include <client.h>
@@ -24,6 +25,24 @@ namespace esphome
 {
   namespace tesla_ble_vehicle
   {
+    static bool decode_software_update_version(pb_istream_t *stream, const pb_field_t *, void **arg)
+    {
+      auto *version = static_cast<std::string *>(*arg);
+      size_t length = stream->bytes_left;
+      if ((version == nullptr) || (length >= 64))
+      {
+        return false;
+      }
+
+      char buffer[64];
+      if (!pb_read(stream, reinterpret_cast<pb_byte_t *>(buffer), length))
+      {
+        return false;
+      }
+      version->assign(buffer, length);
+      return true;
+    }
+
     void TeslaBLEVehicle::dump_config()
     {
       ESP_LOGCONFIG(TAG, "Tesla BLE Vehicle:");
@@ -466,8 +485,9 @@ namespace esphome
       if (buffer_len_post_append > MAX_BLE_MESSAGE_SIZE)
       {
         ESP_LOGE(TAG, "BLE RX: Message length (%d) exceeds max BLE message size", buffer_len_post_append);
-        // clear buffer
+        // clear buffer & remove offending chunk otherwise we'll loop forever
         this->ble_read_buffer_.clear();
+        this->ble_read_queue_.pop();
         return;
       }
 
@@ -794,6 +814,15 @@ namespace esphome
         {
           UniversalMessage_MessageFault_E fault = UniversalMessage_MessageFault_E_MESSAGEFAULT_ERROR_NONE;
           static_carserver_response_ = CarServer_Response_init_default;
+          const bool is_software_update_state_response = !command_queue_.empty() &&
+              command_queue_.front().domain == UniversalMessage_Domain_DOMAIN_INFOTAINMENT &&
+              command_queue_.front().action == BLE_CarServer_VehicleAction::GET_SOFTWARE_UPDATE_STATE;
+          if (is_software_update_state_response)
+          {
+            software_update_version_.clear();
+            static_carserver_response_.response_msg.vehicleData.software_update_state.optional_version.version.funcs.decode = decode_software_update_version;
+            static_carserver_response_.response_msg.vehicleData.software_update_state.optional_version.version.arg = &software_update_version_;
+          }
           int return_code = tesla_ble_client_->parsePayloadCarServerResponse(&read_queue_message_.payload.protobuf_message_as_bytes, &read_queue_message_.sub_sigData.signature_data, 1, fault, &static_carserver_response_);
           if (return_code != 0)
           {
@@ -1041,6 +1070,8 @@ namespace esphome
             sendCarServerVehicleActionMessage (BLE_CarServer_VehicleAction::GET_CLOSURES_STATE, 0);
           if ((number_updates_since_connection_ % get_action_detail(BLE_CarServer_VehicleAction::GET_TYRES_STATE).numberUpdatesBetweenGets) == 0)
             sendCarServerVehicleActionMessage (BLE_CarServer_VehicleAction::GET_TYRES_STATE, 0);
+          if ((number_updates_since_connection_ % get_action_detail(BLE_CarServer_VehicleAction::GET_SOFTWARE_UPDATE_STATE).numberUpdatesBetweenGets) == 0)
+            sendCarServerVehicleActionMessage (BLE_CarServer_VehicleAction::GET_SOFTWARE_UPDATE_STATE, 0);
           if ((car_just_woken_ != 0) and ((millis() - car_wake_time_) > post_wake_poll_time_))
           {
             car_just_woken_ = 0;
@@ -1393,37 +1424,80 @@ namespace esphome
                                                std::function<int()> execute,
                                                std::string execute_name,
                                                BLE_CarServer_VehicleAction action)
+    /*
+    *   Places a new action command into command_queue_ ahead of any idle non-action (polling)
+    *   commands, while keeping action commands in strict FIFO order (new action commands go
+    *   behind any already-queued action commands).
+    *
+    *   Since all action commands are queued via this function, any existing action commands are
+    *   already grouped at the front of the queue, followed by non-action polling commands.
+    *   Therefore, we only need to find the first idle non-action command and insert the new
+    *   action command immediately before it.
+    *
+    *   Because std::queue only supports popping from the front and pushing to the back, we
+    *   cycle through the existing queue elements one full rotation (popping from the front and
+    *   pushing to the back) and emplace the new command just before re-pushing the first idle
+    *   non-action command we encounter.
+    */
     {
-      if (command_queue_.size() == 0)
+      if (command_queue_.empty())
       { // Queue is empty, place new command and nothing more to do
-        command_queue_.emplace (domain, execute, execute_name, action); // This swaps the original first and new command
+        command_queue_.emplace (domain, execute, execute_name, action);
         return;
       }
-      else
-      { // At least one command on queue. If the command at the front of the queue is in progress, it needs to stay there so it can finish.
+
+      // Helper to identify whether a queued command is an action command (true) or a background poll (false)
+      auto is_action_cmd = [this](const BLECommand &c) {
+        // Infotainment VehicleActionMessage commands (e.g. climate, seat heaters, charging, etc.)
+        if ((c.action != BLE_CarServer_VehicleAction::DO_NOTHING) &&
+            (c.action < BLE_CarServer_VehicleAction::_COUNT) &&
+            (get_action_detail(c.action).whichMsg == AllowedMsg::VehicleActionMessage))
+          return true;
+        // VCSEC security actions (wake, lock, unlock), excluding background "data update" status polls
+        if ((c.domain == UniversalMessage_Domain_DOMAIN_VEHICLE_SECURITY) &&
+            (c.execute_name != "data update"))
+          return true;
+        // Charge schedule action (which does not use a BLE_CarServer_VehicleAction enum value)
+        if (c.execute_name == "set_charge_schedule")
+          return true;
+        return false;
+      };
+
+      size_t original_size = command_queue_.size();
+      bool inserted = false;
+
+      // Rotate all existing elements from front to back to preserve their relative order
+      for (size_t i = 0; i < original_size; i++)
+      {
         BLECommand moving_command = command_queue_.front();
         command_queue_.pop();
-        if (moving_command.state == BLECommandState::IDLE)
-        { // If the command at the front hasn't started, it goes behind the new action command
-          command_queue_.emplace (domain, execute, execute_name, action); // This swaps the original first and new command
-          command_queue_.push (moving_command); // Once the q has been cycled, this will 2nd
-        } else
-        { // If the command at the front has started, the new command goes behind it
-          command_queue_.push (moving_command);
-          command_queue_.emplace (domain, execute, execute_name, action); // Once the q has been cycled, this will 2nd
-        }
+
         /*
-        *   At this point the back of the queue is either new command last, original front command just in front, or vice versa
-        *   depending on whether the original front command was in progress or not. Now just pop and push (to the back) all
-        *   remaining queue commands (if any).
+        *   If we haven't inserted the new command yet, check if moving_command is the first
+        *   idle non-action command. (If a command at the front is already in progress, its
+        *   state != IDLE, so it stays ahead of the new command to finish executing.)
+        *   Any existing action commands will have is_action_cmd() == true and will also stay
+        *   ahead of the new command.
         */
-        int rest = command_queue_.size() - 2; // The 2 at the back will end up at the front.
-        for (int i = 0; i < rest; i++) // Loop won't execute if only 2 in q
+        if (!inserted && (moving_command.state == BLECommandState::IDLE) && !is_action_cmd(moving_command))
         {
-          BLECommand moving_command = command_queue_.front();
-          command_queue_.pop(); // Pop off front...
-          command_queue_.push (moving_command); // ... and push to the back
+          // Insert the new action command immediately before the first idle non-action command
+          command_queue_.emplace (domain, execute, execute_name, action);
+          inserted = true;
         }
+
+        // Re-push the existing command to the back as part of the full queue rotation
+        command_queue_.push(moving_command);
+      }
+
+      /*
+      *   If the queue only contained action commands (or an in-progress command with no idle
+      *   non-action commands behind it), we won't have found a non-action command to insert
+      *   before, so append the new action command at the back (behind all existing actions).
+      */
+      if (!inserted)
+      {
+        command_queue_.emplace (domain, execute, execute_name, action);
       }
     }
 
@@ -1558,14 +1632,7 @@ namespace esphome
               break;
             case AllowedMsg::VehicleActionMessage:
             // Need to create a vehicle action message
-              if (long_param == 0)
-              {
-                return_code = actions_buildCarServerVehicleActionMessage (static_cast<int32_t>(param), static_message_buffer_, &message_length, get_action_detail(action).actionTag);
-              }
-              else
-              {
-                return_code = actions_buildCarServerVehicleActionMessage (0, static_message_buffer_, &message_length, get_action_detail(action).actionTag, long_param);
-              }
+              return_code = actions_buildCarServerVehicleActionMessage (static_cast<int32_t>(param), static_message_buffer_, &message_length, get_action_detail(action).actionTag, long_param);
               if ((action == BLE_CarServer_VehicleAction::SET_CHARGING_SWITCH) and (param == 1))
               { // If charging has been requested, enable continuous polling
                 car_is_charging_ = ChargingJustStarted; //true;
@@ -1717,6 +1784,34 @@ namespace esphome
 
     int TeslaBLEVehicle::handleInfoCarServerResponse (const CarServer_Response& carserver_response)
     {
+      const auto publish_which_sensor = [this](bool present, auto entity,
+                                     auto value_func, const char *description)
+      {
+        if constexpr (std::is_pointer_v<decltype(entity)>)
+        {
+          // Direct ESPHome entity pointer (switch or select)
+          if (present && entity != nullptr)
+          {
+            entity->publish_state(value_func());
+          }
+          else
+          {
+            ESP_LOGI(TAG, "No data to set %s", description);
+          }
+        }
+        else
+        {
+          // Existing sensor ID handling
+          if (present)
+          {
+            this->publishSensor(entity, value_func());
+          }
+          else
+          {
+            ESP_LOGI(TAG, "No data to set %s", description);
+          }
+        }
+      };
       switch (carserver_response.which_response_msg)
       {
         case CarServer_Response_vehicleData_tag:
@@ -1724,109 +1819,39 @@ namespace esphome
           time (&timestamp);
           if (carserver_response.response_msg.vehicleData.has_charge_state)
           {
+            const auto &charge_state = carserver_response.response_msg.vehicleData.charge_state;
             /*
             *   There are two battery level fields, optional_usable_battery_level and optional_battery_level.
             *   The former seems to correspond to that provided by the Tesla app and in the car and so is used here.
             */
-            if (carserver_response.response_msg.vehicleData.charge_state.which_optional_usable_battery_level)
+            publish_which_sensor (charge_state.which_optional_usable_battery_level, NumericSensorId::ChargeState,
+                                  [&]() {return charge_state.optional_usable_battery_level.usable_battery_level;}, "car battery level");
+            publish_which_sensor (charge_state.which_optional_charger_actual_current, NumericSensorId::ChargeCurrent,
+                                  [&]() {return charge_state.optional_charger_actual_current.charger_actual_current;}, "actual current");
+            publish_which_sensor (charge_state.which_optional_charger_voltage, NumericSensorId::ChargeVoltage,
+                                  [&]() {return charge_state.optional_charger_voltage.charger_voltage;}, "charger voltage");
+            publish_which_sensor (charge_state.which_optional_charger_power, NumericSensorId::ChargePower,
+                                  [&]() {return charge_state.optional_charger_power.charger_power;}, "charger power");
+            publish_which_sensor (charge_state.which_optional_charge_limit_soc, NumericSensorId::MaxSoc,
+                                  [&]() {return charge_state.optional_charge_limit_soc.charge_limit_soc;}, "soc limit");
+            publish_which_sensor (charge_state.which_optional_charging_amps, NumericSensorId::MaxAmps,
+                                  [&]() {return charge_state.optional_charging_amps.charging_amps;}, "charging amps");
+            publish_which_sensor (charge_state.which_optional_minutes_to_charge_limit, NumericSensorId::MinsToLimit,
+                                  [&]() {return charge_state.optional_minutes_to_charge_limit.minutes_to_charge_limit;}, "minutes to charge limit");
+            publish_which_sensor (charge_state.which_optional_battery_range, NumericSensorId::BatteryRange,
+                                  [&]() {return charge_state.optional_battery_range.battery_range;}, "battery range");
+            publish_which_sensor (charge_state.which_optional_charge_energy_added, NumericSensorId::ChargeEnergyAdded,
+                                  [&]() {return charge_state.optional_charge_energy_added.charge_energy_added;}, "energy added");
+            publish_which_sensor (charge_state.which_optional_charge_miles_added_ideal, NumericSensorId::ChargeDistanceAdded,
+                                  [&]() {return charge_state.optional_charge_miles_added_ideal.charge_miles_added_ideal;}, "miles added");
+            publish_which_sensor (charge_state.which_optional_charger_phases, NumericSensorId::ChargerPhases,
+                                  [&]() {return charge_state.optional_charger_phases.charger_phases;}, "charger phases");
+            publish_which_sensor (charge_state.which_optional_charge_rate_mph, NumericSensorId::ChargeRate,
+                                  [&]() {return charge_state.optional_charge_rate_mph.charge_rate_mph;}, "charge rate");
+            if (charge_state.has_charging_state)
             {
-              publishSensor (NumericSensorId::ChargeState, carserver_response.response_msg.vehicleData.charge_state.optional_usable_battery_level.usable_battery_level);
-            }
-            else
-            {
-              ESP_LOGI (TAG, "No data to set car battery level");
-            }
-            if (carserver_response.response_msg.vehicleData.charge_state.which_optional_charger_actual_current)
-            {            
-              publishSensor (NumericSensorId::ChargeCurrent, carserver_response.response_msg.vehicleData.charge_state.optional_charger_actual_current.charger_actual_current);
-            }
-            else
-            {
-              ESP_LOGI (TAG, "No data to set actual current");
-            }
-            if (carserver_response.response_msg.vehicleData.charge_state.which_optional_charger_voltage)
-            {            
-              publishSensor (NumericSensorId::ChargeVoltage, carserver_response.response_msg.vehicleData.charge_state.optional_charger_voltage.charger_voltage);
-            }
-            else
-            {
-              ESP_LOGI (TAG, "No data to set charger voltage");
-            }
-            if (carserver_response.response_msg.vehicleData.charge_state.which_optional_charger_power)
-            {            
-              publishSensor (NumericSensorId::ChargePower, carserver_response.response_msg.vehicleData.charge_state.optional_charger_power.charger_power);
-            }
-            else
-            {
-              ESP_LOGI (TAG, "No data to set charger power");
-            }
-            if (carserver_response.response_msg.vehicleData.charge_state.which_optional_charge_limit_soc)
-            {            
-              publishSensor (NumericSensorId::MaxSoc, carserver_response.response_msg.vehicleData.charge_state.optional_charge_limit_soc.charge_limit_soc);
-            }
-            else
-            {
-              ESP_LOGI (TAG, "No data to set soc limit");
-            }
-            if (carserver_response.response_msg.vehicleData.charge_state.which_optional_charging_amps)
-            {            
-              publishSensor (NumericSensorId::MaxAmps, carserver_response.response_msg.vehicleData.charge_state.optional_charging_amps.charging_amps);
-            }
-            else
-            {
-              ESP_LOGI (TAG, "No data to set charging amps");
-            }
-            if (carserver_response.response_msg.vehicleData.charge_state.which_optional_minutes_to_charge_limit)
-            {            
-              publishSensor (NumericSensorId::MinsToLimit, carserver_response.response_msg.vehicleData.charge_state.optional_minutes_to_charge_limit.minutes_to_charge_limit);
-            }
-            else
-            {
-              ESP_LOGI (TAG, "No data to set minutes to charge limit");
-            }
-            if (carserver_response.response_msg.vehicleData.charge_state.which_optional_battery_range)
-            {            
-              publishSensor (NumericSensorId::BatteryRange, carserver_response.response_msg.vehicleData.charge_state.optional_battery_range.battery_range);
-            }
-            else
-            {
-              ESP_LOGI (TAG, "No data to set battery range");
-            }
-            if (carserver_response.response_msg.vehicleData.charge_state.which_optional_charge_energy_added)
-            {            
-              publishSensor (NumericSensorId::ChargeEnergyAdded, carserver_response.response_msg.vehicleData.charge_state.optional_charge_energy_added.charge_energy_added);
-            }
-            else
-            {
-              ESP_LOGI (TAG, "No data to set energy added");
-            }
-            if (carserver_response.response_msg.vehicleData.charge_state.which_optional_charge_miles_added_ideal)
-            {            
-              publishSensor (NumericSensorId::ChargeDistanceAdded, carserver_response.response_msg.vehicleData.charge_state.optional_charge_miles_added_ideal.charge_miles_added_ideal);
-            }
-            else
-            {
-              ESP_LOGI (TAG, "No data to set miles added");
-            }
-            if (carserver_response.response_msg.vehicleData.charge_state.which_optional_charger_phases)
-            {            
-              publishSensor (NumericSensorId::ChargerPhases, carserver_response.response_msg.vehicleData.charge_state.optional_charger_phases.charger_phases);
-            }
-            else
-            {
-              ESP_LOGI (TAG, "No data to set charger phases");
-            }
-            if (carserver_response.response_msg.vehicleData.charge_state.which_optional_charge_rate_mph)
-            {            
-              publishSensor (NumericSensorId::ChargeRate, carserver_response.response_msg.vehicleData.charge_state.optional_charge_rate_mph.charge_rate_mph);
-            }
-            else
-            {
-              ESP_LOGI (TAG, "No data to set charge rate");
-            }
-            if (carserver_response.response_msg.vehicleData.charge_state.has_charging_state)
-            {
-              switch (carserver_response.response_msg.vehicleData.charge_state.charging_state.which_type)
+              charging_state_raw_ = charge_state.charging_state.which_type;
+              switch (charging_state_raw_)
               {
                 case CarServer_ChargeState_ChargingState_Starting_tag:
                 case CarServer_ChargeState_ChargingState_Charging_tag:
@@ -1838,198 +1863,179 @@ namespace esphome
                 case CarServer_ChargeState_ChargingState_Stopped_tag:
                   publishSensor (NumericSensorId::MinsToLimit, NAN); // If not charging, minutes to limit makes no sense
                   [[fallthrough]];
-                  default:
+                default:
                   car_is_charging_ = NotCharging;
               }
-              charging_state_raw_ = carserver_response.response_msg.vehicleData.charge_state.charging_state.which_type;
-              std::string charging_state_text = lookup_charging_state (carserver_response.response_msg.vehicleData.charge_state.charging_state.which_type);
-              publishSensor (TextSensorId::ChargingState, charging_state_text.c_str());
               if (charger_switch_ != nullptr)
               {
-                charger_switch_->publish_state ((charging_state_text == "Charging") or (charging_state_text == "Starting") or (charging_state_text == "Calibrating"));
+                charger_switch_->publish_state ((charging_state_raw_ == CarServer_ChargeState_ChargingState_Charging_tag) ||
+                                                (charging_state_raw_ == CarServer_ChargeState_ChargingState_Starting_tag) ||
+                                                (charging_state_raw_ == CarServer_ChargeState_ChargingState_Calibrating_tag));
               }
             }
-            else
-            {
-              ESP_LOGI (TAG, "No data to set charging state");
-            }
-            if (carserver_response.response_msg.vehicleData.charge_state.has_charge_port_latch)
-            {            
-              std::string charge_port_latch_state_text = lookup_charge_port_latch_state (carserver_response.response_msg.vehicleData.charge_state.charge_port_latch.which_type);
-              publishSensor (TextSensorId::ChargePortLatchState, charge_port_latch_state_text.c_str());
-            }
-            else
-            {
-              ESP_LOGI (TAG, "No data to set charge port latch");
-            }
+            // Beware that the lookups are undefined if there's no data but publish_which_sensor (currently!!) doesn't do the lookup if they're undefined
+            publish_which_sensor (charge_state.has_charging_state, TextSensorId::ChargingState,
+                                  [&]() {return lookup_charging_state(charging_state_raw_);}, "charging state");
+            publish_which_sensor (charge_state.has_charge_port_latch, TextSensorId::ChargePortLatchState,
+                                  [&]() {return lookup_charge_port_latch_state (charge_state.charge_port_latch.which_type);}, "charge port latch");
             publishSensor (TextSensorId::LastUpdate, ctime(&timestamp));
           }
           else if (carserver_response.response_msg.vehicleData.has_drive_state)
           {
-            if (carserver_response.response_msg.vehicleData.drive_state.has_shift_state)
-            {
-              std::string shift_state_text = lookup_shift_state (carserver_response.response_msg.vehicleData.drive_state.shift_state.which_type);
-              publishSensor (TextSensorId::ShiftState, shift_state_text.c_str());
-            }
-            else
-            {
-              ESP_LOGI (TAG, "No data to set shift state");
-            }
-            if (carserver_response.response_msg.vehicleData.drive_state.which_optional_odometer_in_hundredths_of_a_mile)
-            {
-              publishSensor (NumericSensorId::Odometer, carserver_response.response_msg.vehicleData.drive_state.optional_odometer_in_hundredths_of_a_mile.odometer_in_hundredths_of_a_mile);
-            }
-            else
-            {
-              ESP_LOGI (TAG, "No data to set odometer");
-            }
+            const auto &drive_state = carserver_response.response_msg.vehicleData.drive_state;
+            publish_which_sensor (drive_state.has_shift_state, TextSensorId::ShiftState,
+                                  [&]() {return lookup_shift_state (drive_state.shift_state.which_type);}, "shift state");
+            publish_which_sensor (drive_state.which_optional_odometer_in_hundredths_of_a_mile, NumericSensorId::Odometer,
+                                  [&]() {return drive_state.optional_odometer_in_hundredths_of_a_mile.odometer_in_hundredths_of_a_mile;}, "odometer");
             publishSensor (TextSensorId::LastUpdate, ctime(&timestamp));
           }
           else if (carserver_response.response_msg.vehicleData.has_climate_state)
           {
-            if (carserver_response.response_msg.vehicleData.climate_state.which_optional_is_climate_on)
+            const auto &climate_state = carserver_response.response_msg.vehicleData.climate_state;
+            publish_which_sensor (climate_state.which_optional_is_climate_on, BinarySensorId::IsClimateOn,
+                                  [&]() {return climate_state.optional_is_climate_on.is_climate_on;}, "climate on/off");
+            publish_which_sensor (climate_state.which_optional_inside_temp_celsius, NumericSensorId::InternalTemp,
+                                  [&]() {return climate_state.optional_inside_temp_celsius.inside_temp_celsius;}, "inside temperature");
+            publish_which_sensor (climate_state.which_optional_outside_temp_celsius, NumericSensorId::ExternalTemp,
+                                  [&]() {return climate_state.optional_outside_temp_celsius.outside_temp_celsius;}, "outside temperature");
+            publish_which_sensor (climate_state.which_optional_driver_temp_setting, NumericSensorId::DriverTemp,
+                                  [&]() {return climate_state.optional_driver_temp_setting.driver_temp_setting;}, "driver temperature");
+            publish_which_sensor (climate_state.has_defrost_mode, TextSensorId::DefrostState,
+                                  [&]() {return lookup_defrost_state (climate_state.defrost_mode.which_type);}, "defrost mode");
+            if (climate_state.has_defrost_mode && (defrost_switch_ != nullptr))
             {
-              publishSensor (BinarySensorId::IsClimateOn, carserver_response.response_msg.vehicleData.climate_state.optional_is_climate_on.is_climate_on);
+              defrost_switch_->publish_state (climate_state.defrost_mode.which_type != CarServer_ClimateState_DefrostMode_Off_tag);
             }
-              else
+            publish_which_sensor (climate_state.which_optional_cabin_overheat_protection, cabin_overheat_select_,
+                                  [&]() {
+                                          switch (climate_state.optional_cabin_overheat_protection.cabin_overheat_protection)
+                                          {
+                                            case CarServer_ClimateState_CabinOverheatProtection_E_CabinOverheatProtectionOff:     return std::string ("Off");
+                                            case CarServer_ClimateState_CabinOverheatProtection_E_CabinOverheatProtectionOn:      return std::string ("On");
+                                            case CarServer_ClimateState_CabinOverheatProtection_E_CabinOverheatProtectionFanOnly: return std::string ("Fan");
+                                            default: return std::string ("Unknown");
+                                          }
+                                        }, "cabin overheat status");
+            publish_which_sensor (climate_state.which_optional_cop_activation_temperature, cabin_overheat_temp_select_,
+                                  [&]() {
+                                          switch (climate_state.optional_cop_activation_temperature.cop_activation_temperature)
+                                          {
+                                            case CarServer_ClimateState_CopActivationTemp_CopActivationTempLow:    return std::string ("Low");
+                                            case CarServer_ClimateState_CopActivationTemp_CopActivationTempMedium: return std::string ("Medium");
+                                            case CarServer_ClimateState_CopActivationTemp_CopActivationTempHigh:   return std::string ("High");
+                                            default: return std::string ("Unknown");
+                                          }
+                                        }, "cabin overheat temperature");
+            // Front left: Auto takes precedence over the numeric heater level.
+            if (climate_state.which_optional_auto_seat_climate_left && climate_state.optional_auto_seat_climate_left.auto_seat_climate_left)
             {
-              ESP_LOGI (TAG, "No data to set climate on/off");
-            }
-            if (carserver_response.response_msg.vehicleData.climate_state.which_optional_inside_temp_celsius)
-            {
-              publishSensor (NumericSensorId::InternalTemp, carserver_response.response_msg.vehicleData.climate_state.optional_inside_temp_celsius.inside_temp_celsius);
+              publish_if (seat_heater_front_left_select_, "Auto");
             }
             else
             {
-              ESP_LOGI (TAG, "No data to set inside temperature");
+              publish_which_sensor (climate_state.which_optional_seat_heater_left, seat_heater_front_left_select_,
+                                    [&]() {return lookup_seat_heater_level (climate_state.optional_seat_heater_left.seat_heater_left);}, "front left seat heater");
             }
-            if (carserver_response.response_msg.vehicleData.climate_state.which_optional_outside_temp_celsius)
+            // Front right: Auto takes precedence over the numeric heater level.
+            if (climate_state.which_optional_auto_seat_climate_right && climate_state.optional_auto_seat_climate_right.auto_seat_climate_right)
             {
-              publishSensor (NumericSensorId::ExternalTemp, carserver_response.response_msg.vehicleData.climate_state.optional_outside_temp_celsius.outside_temp_celsius);
+              publish_if (seat_heater_front_right_select_, "Auto");
             }
             else
             {
-              ESP_LOGI (TAG, "No data to set outside temperature");
+              publish_which_sensor (climate_state.which_optional_seat_heater_right, seat_heater_front_right_select_,
+                                    [&]() {return lookup_seat_heater_level (climate_state.optional_seat_heater_right.seat_heater_right);}, "front right seat heater");
             }
-            if (carserver_response.response_msg.vehicleData.climate_state.which_optional_driver_temp_setting)
-            {
-              publishSensor (NumericSensorId::DriverTemp, carserver_response.response_msg.vehicleData.climate_state.optional_driver_temp_setting.driver_temp_setting);
-            }
-            else
-            {
-              ESP_LOGI (TAG, "No data to set driver temperature");
-            }
-            if (carserver_response.response_msg.vehicleData.climate_state.has_defrost_mode)
-            {
-              std::string defrost_state_text = lookup_defrost_state (carserver_response.response_msg.vehicleData.climate_state.defrost_mode.which_type);
-              publishSensor (TextSensorId::DefrostState, defrost_state_text.c_str());
-              if (defrost_switch_ != nullptr)
-              {
-                defrost_switch_->publish_state(defrost_state_text != "Off");
-              }
-            }
-            else
-            {
-              ESP_LOGI (TAG, "No data to set defrost mode");
-            }
-            if (carserver_response.response_msg.vehicleData.climate_state.which_optional_cabin_overheat_protection)
-            {
-              CarServer_ClimateState_CabinOverheatProtection_E cabin_overheat_protection_ = carserver_response.response_msg.vehicleData.climate_state.optional_cabin_overheat_protection.cabin_overheat_protection;
-              switch (cabin_overheat_protection_)
-              {
-                case CarServer_ClimateState_CabinOverheatProtection_E_CabinOverheatProtectionOff:
-                  cabin_overheat_select_->publish_state("Off");
-                  break;
-                case CarServer_ClimateState_CabinOverheatProtection_E_CabinOverheatProtectionOn:
-                  cabin_overheat_select_->publish_state("On");
-                  break;
-                case CarServer_ClimateState_CabinOverheatProtection_E_CabinOverheatProtectionFanOnly:
-                  cabin_overheat_select_->publish_state("Fan");
-                  break;
-                default:
-                  cabin_overheat_select_->publish_state("Unknown");
-              }
-            }
-              else
-            {
-              ESP_LOGI (TAG, "No data to set cabin overheat status");
-            }
-            if (carserver_response.response_msg.vehicleData.climate_state.which_optional_cop_activation_temperature)
-            {
-              CarServer_ClimateState_CopActivationTemp cabin_overheat_temp_ = carserver_response.response_msg.vehicleData.climate_state.optional_cop_activation_temperature.cop_activation_temperature;
-              switch (cabin_overheat_temp_)
-              {
-                case CarServer_ClimateState_CopActivationTemp_CopActivationTempLow:
-                  cabin_overheat_temp_select_->publish_state("Low");
-                  break;
-                case CarServer_ClimateState_CopActivationTemp_CopActivationTempMedium:
-                  cabin_overheat_temp_select_->publish_state("Medium");
-                  break;
-                case CarServer_ClimateState_CopActivationTemp_CopActivationTempHigh :
-                  cabin_overheat_temp_select_->publish_state("High");
-                  break;
-                default:
-                  cabin_overheat_temp_select_->publish_state("Unknown");
-              }
-            }
-              else
-            {
-              ESP_LOGI (TAG, "No data to set cabin overheat temperature");
-            }
+            // Rear left
+            publish_which_sensor (climate_state.which_optional_seat_heater_rear_left, seat_heater_rear_left_select_,
+                                  [&]() {return lookup_seat_heater_level (climate_state.optional_seat_heater_rear_left.seat_heater_rear_left);}, "rear left seat heater");
+            // Rear centre
+            publish_which_sensor (climate_state.which_optional_seat_heater_rear_center, seat_heater_rear_center_select_,
+                                  [&]() {return lookup_seat_heater_level (climate_state.optional_seat_heater_rear_center.seat_heater_rear_center);}, "rear centre seat heater");
+            // Rear right
+            publish_which_sensor (climate_state.which_optional_seat_heater_rear_right, seat_heater_rear_right_select_,
+                                  [&]() {return lookup_seat_heater_level (climate_state.optional_seat_heater_rear_right.seat_heater_rear_right);}, "rear right seat heater");
+
             publishSensor (TextSensorId::LastUpdate, ctime(&timestamp));
           }
           else if (carserver_response.response_msg.vehicleData.has_closures_state)
           {
-            if (carserver_response.response_msg.vehicleData.closures_state.which_optional_door_open_trunk_rear)
-            {
-              publishSensor (BinarySensorId::IsBootOpen, carserver_response.response_msg.vehicleData.closures_state.optional_door_open_trunk_rear.door_open_trunk_rear);
-            }
-            else
-            {
-              ESP_LOGI (TAG, "No data to set boot state");
-            }
-            if (carserver_response.response_msg.vehicleData.closures_state.which_optional_window_open_driver_front)
-            {
-              publishSensor (BinarySensorId::IsFrunkOpen, carserver_response.response_msg.vehicleData.closures_state.optional_door_open_trunk_front.door_open_trunk_front);
-            }
-            else
-            {
-              ESP_LOGI (TAG, "No data to set frunk state");
-            }
-            if (carserver_response.response_msg.vehicleData.closures_state.which_optional_window_open_driver_front and
-                carserver_response.response_msg.vehicleData.closures_state.which_optional_window_open_driver_rear and
-                carserver_response.response_msg.vehicleData.closures_state.which_optional_window_open_passenger_rear and
-                carserver_response.response_msg.vehicleData.closures_state.which_optional_window_open_passenger_front)
-            {
-            publishSensor (BinarySensorId::WindowsState,
-              carserver_response.response_msg.vehicleData.closures_state.optional_window_open_driver_front.window_open_driver_front or
-              carserver_response.response_msg.vehicleData.closures_state.optional_window_open_passenger_front.window_open_passenger_front or
-              carserver_response.response_msg.vehicleData.closures_state.optional_window_open_driver_rear.window_open_driver_rear or
-              carserver_response.response_msg.vehicleData.closures_state.optional_window_open_passenger_rear.window_open_passenger_rear
-              );
-            }
-            else
-            {
-              ESP_LOGI (TAG, "No data to set windows state");
-            }
+            const auto &closures_state = carserver_response.response_msg.vehicleData.closures_state;
+            publish_which_sensor (closures_state.which_optional_door_open_trunk_rear, BinarySensorId::IsBootOpen,
+                                  [&]() {return closures_state.optional_door_open_trunk_rear.door_open_trunk_rear;}, "boot state");
+            publish_which_sensor (closures_state.which_optional_door_open_trunk_front, BinarySensorId::IsFrunkOpen,
+                                  [&]() {return closures_state.optional_door_open_trunk_front.door_open_trunk_front;}, "frunk state");
+            publish_which_sensor ((closures_state.which_optional_window_open_driver_front && closures_state.which_optional_window_open_driver_rear &&
+                                   closures_state.which_optional_window_open_passenger_rear && closures_state.which_optional_window_open_passenger_front),
+                                  BinarySensorId::WindowsState,
+                                  [&]() {return (closures_state.optional_window_open_driver_front.window_open_driver_front ||
+                                         closures_state.optional_window_open_passenger_front.window_open_passenger_front ||
+                                         closures_state.optional_window_open_driver_rear.window_open_driver_rear ||
+                                         closures_state.optional_window_open_passenger_rear.window_open_passenger_rear);}, "windows state");
             publishSensor (TextSensorId::LastUpdate, ctime(&timestamp));
           }
           else if (carserver_response.response_msg.vehicleData.has_tire_pressure_state)
           {
-            if (carserver_response.response_msg.vehicleData.tire_pressure_state.which_optional_tpms_pressure_fl and
-                carserver_response.response_msg.vehicleData.tire_pressure_state.which_optional_tpms_pressure_fr and
-                carserver_response.response_msg.vehicleData.tire_pressure_state.which_optional_tpms_pressure_rl and
-                carserver_response.response_msg.vehicleData.tire_pressure_state.which_optional_tpms_pressure_rr)
+            const auto &tire_pressure_state = carserver_response.response_msg.vehicleData.tire_pressure_state;
+            publish_which_sensor (tire_pressure_state.which_optional_tpms_pressure_fl, NumericSensorId::TpmsFl,
+                                  [&]() {return tire_pressure_state.optional_tpms_pressure_fl.tpms_pressure_fl;}, "front left tyre pressure");
+            publish_which_sensor (tire_pressure_state.which_optional_tpms_pressure_fr, NumericSensorId::TpmsFr,
+                                  [&]() {return tire_pressure_state.optional_tpms_pressure_fr.tpms_pressure_fr;}, "front right tyre pressure");
+            publish_which_sensor (tire_pressure_state.which_optional_tpms_pressure_rl, NumericSensorId::TpmsRl,
+                                  [&]() {return tire_pressure_state.optional_tpms_pressure_rl.tpms_pressure_rl;}, "rear left tyre pressure");
+            publish_which_sensor (tire_pressure_state.which_optional_tpms_pressure_rr, NumericSensorId::TpmsRr,
+                                  [&]() {return tire_pressure_state.optional_tpms_pressure_rr.tpms_pressure_rr;}, "rear right tyre pressure");
+            publishSensor (TextSensorId::LastUpdate, ctime(&timestamp));
+          }
+          else if (carserver_response.response_msg.vehicleData.has_software_update_state)
+          {
+            const auto &software_update = carserver_response.response_msg.vehicleData.software_update_state;
+            const char *status = "Unknown";
+            bool update_available = false;
+
+            if (software_update.has_status)
             {
-              publishSensor (NumericSensorId::TpmsFl, carserver_response.response_msg.vehicleData.tire_pressure_state.optional_tpms_pressure_fl.tpms_pressure_fl);
-              publishSensor (NumericSensorId::TpmsFr, carserver_response.response_msg.vehicleData.tire_pressure_state.optional_tpms_pressure_fr.tpms_pressure_fr);
-              publishSensor (NumericSensorId::TpmsRl, carserver_response.response_msg.vehicleData.tire_pressure_state.optional_tpms_pressure_rl.tpms_pressure_rl);
-              publishSensor (NumericSensorId::TpmsRr, carserver_response.response_msg.vehicleData.tire_pressure_state.optional_tpms_pressure_rr.tpms_pressure_rr);
+              switch (software_update.status.which_type)
+              {
+                case CarServer_SoftwareUpdateState_SoftwareUpdateStatus_Installing_tag:
+                  status = "Installing";
+                  update_available = true;
+                  break;
+                case CarServer_SoftwareUpdateState_SoftwareUpdateStatus_Scheduled_tag:
+                  status = "Scheduled";
+                  update_available = true;
+                  break;
+                case CarServer_SoftwareUpdateState_SoftwareUpdateStatus_Available_tag:
+                  status = "Available";
+                  update_available = true;
+                  break;
+                case CarServer_SoftwareUpdateState_SoftwareUpdateStatus_DownloadingWifiWait_tag:
+                  status = "Downloading Wi-Fi wait";
+                  update_available = true;
+                  break;
+                case CarServer_SoftwareUpdateState_SoftwareUpdateStatus_Downloading_tag:
+                  status = "Downloading";
+                  update_available = true;
+                  break;
+                case CarServer_SoftwareUpdateState_SoftwareUpdateStatus_Unknown_tag:
+                  status = "No update available";
+                  break;
+                default:
+                  break;
+              }
+            }
+            publishSensor (BinarySensorId::SoftwareUpdateAvailable, update_available);
+            publishSensor (TextSensorId::SoftwareUpdateState, status);
+            if (software_update.which_optional_version)
+            {
+              publishSensor (TextSensorId::SoftwareUpdateVersion, (software_update_version_.empty() ? "Unknown" : software_update_version_));
             }
             else
             {
-              ESP_LOGI (TAG, "No data to set tyre pressures");
+              publishSensor (TextSensorId::SoftwareUpdateVersion, "Unknown");
             }
+            publishSensor (NumericSensorId::SoftwareUpdateDownloadProgress, ((update_available && software_update.which_optional_download_perc) ? software_update.optional_download_perc.download_perc : NAN));
+            publishSensor (NumericSensorId::SoftwareUpdateInstallProgress, ((update_available && software_update.which_optional_install_perc) ? software_update.optional_install_perc.install_perc : NAN));
             publishSensor (TextSensorId::LastUpdate, ctime(&timestamp));
           }
           else if (carserver_response.response_msg.vehicleData.has_charge_schedule_state)
