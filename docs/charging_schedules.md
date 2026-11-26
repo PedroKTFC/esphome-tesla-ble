@@ -1,11 +1,14 @@
 ## Charging schedules
-This project allows you to **view**, **add** and **delete** Tesla charging schedules. Unlike the other sensors and controls, charging schedules are handled differently and require some familiarity with Home Assistant (HA). Since many users will not need this functionality, it is documented separately.
+This project allows you to **view**, **add**, **edit** and **delete** Tesla charging schedules. Preconditioning (departure) schedules work the same way, see [preconditioning.md](./preconditioning.md). Unlike the other sensors and controls, charging schedules are handled differently and require some familiarity with Home Assistant (HA). Since many users will not need this functionality, it is documented separately.
+
+> [!TIP]
+> For a ready-made setup (sensors, scripts, a schedule editor and a dashboard for both charging and preconditioning schedules) use the Home Assistant package in [ha/](./ha/), described in [preconditioning.md](./preconditioning.md#home-assistant-package-and-dashboard). The rest of this page explains the underlying events and actions.
 
 ### Key features
 
 - Charging schedules are returned to Home Assistant as an **event**, rather than a sensor. This is because a single schedule list can exceed the 255-character limit of an ESPHome text sensor. The event data can then be captured into a Home Assistant entity (this guide demonstrates capturing it in a number sensor).
 - Charging schedules are retrieved **on demand** by pressing the **Get charge schedules button**. Note the car must be awake.
-- Charging schedules can be added one at a time. A build-time option **allow_setting_schedules** enables/disables them.
+- Charging schedules can be added or edited one at a time. A build-time option **allow_setting_schedules** enables/disables them.
 - Individual charging schedules can be deleted by specifying the schedule's **ID** using the **Delete a charging schedule** control.
 - All charging schedule controls are **disabled by default**.
 
@@ -76,7 +79,7 @@ The ability to create charging schedules is not enabled by default. The build-ti
   allow_setting_schedules: 0 # if = 0 the set_charge_schedule action will reject all requests. MUST rebuild if changed
 ```
 #### Set charge schedule action
-The action to set a charge schedule is named **esphome.<your_friendly_name>_set_charge_schedule**. It provides all the fields of the Tesla message apart from ID (which is set internally). They are as follows:
+The action to set a charge schedule is named **esphome.<your_friendly_name>_set_charge_schedule**. It provides all the fields of the Tesla message apart from ID (which is set internally from the current time), so it always adds a new schedule. They are as follows:
 - name - doesn't seem to be used
 - days_of_week - 7 bit bit mask
 - start_enabled - boolean
@@ -88,9 +91,14 @@ The action to set a charge schedule is named **esphome.<your_friendly_name>_set_
 - latitude - float
 - longitude - float
 
+`days_of_week` bits are Sun = 1, Mon = 2, Tue = 4, Wed = 8, Thu = 16, Fri = 32, Sat = 64 (so Mon-Fri = 62, every day = 127).
+
+#### Edit charge schedule action
+**esphome.<your_friendly_name>_edit_charge_schedule** takes the same fields plus **schedule_id**. Give the ID of an existing schedule (from the schedule list) and that schedule is replaced with the values given; leave it empty to add a new schedule. The same build-time option applies.
+
 Some basic validation is performed and a request will be rejected if this validation fails (with a helpful message in the log). Validation includes days_of_week bit mask in range, times minutes do not exceed 24 hours, latitude and longitude are on the globe.
 
-Note that setting a charge schedule does not cause the list of schedules to be updated in Home Assistant, you have to explicitly read them back.
+Once the car accepts the schedule, the list of schedules is automatically read back (firing the `esphome.tesla_schedules_updated` event).
 
 I suggest you try it using the **tools** section in Home Assistant.
 #### Example script
@@ -158,5 +166,10 @@ fields:
       boolean: {}
     default: false
 ```
+#### Other actions
+- **esphome.<your_friendly_name>_delete_charge_schedule** (`schedule_id`) deletes a schedule; the list is then re-read automatically.
+- **esphome.<your_friendly_name>_get_charge_schedules** reads the schedules (same as the button).
+- **esphome.<your_friendly_name>_set_scheduled_charging** (`start_time` in minutes after midnight, negative to disable) sets the older single "scheduled charging" start time.
+
 ### Deleting a charging schedule
 The **Delete a charging schedule** control (disabled by default) allows you to remove an individual charging schedule. Enter the **ID** of the schedule you wish to delete and submit the request. Once the schedule has been deleted, the list of charging schedules is automatically refreshed. Note this control wakes the car if it is asleep.

@@ -1,0 +1,591 @@
+# =====================================================================================================
+# Tesla BLE - schedules and preconditioning for Home Assistant (single package file)
+#
+# What you get:
+#   - sensor.tesla_charge_schedules / sensor.tesla_precondition_schedules (state = count, attributes
+#     `schedules` = the list read from the car, `read_at` = when it was read)
+#   - scripts to wake the car, refresh the lists, add/edit/delete schedules and precondition now
+#   - an automation that re-reads the lists whenever the car is awake and the last read is over an hour old
+#   - a schedule editor (helpers + 2 automations) used by docs/ha/tesla_ble_dashboard.yaml
+#
+# Install:
+#   1. configuration.yaml:   homeassistant:
+#                              packages: !include_dir_named packages
+#   2. Save this file as /config/packages/tesla_ble_schedules.yaml
+#   3. Your ESPHome device name is assumed to be `tesla-ble` (entities `*.tesla_ble_*`, actions
+#      `esphome.tesla_ble_*`). If yours differs, search-and-replace `tesla_ble_` in this file.
+#   4. Developer tools > YAML > Check configuration, then restart Home Assistant (first install)
+#   5. In the ESPHome integration, device options: enable "Allow the device to perform Home Assistant
+#      actions" (the schedule lists arrive as events).
+#   6. Setting schedules needs `allow_setting_schedules: 1` under `tesla_ble_vehicle:` in the ESPHome yaml.
+#
+# Days are a bitmask: Sun = 1, Mon = 2, Tue = 4, Wed = 8, Thu = 16, Fri = 32, Sat = 64.
+# =====================================================================================================
+
+template:
+  - triggers:
+      - trigger: event
+        event_type: esphome.tesla_schedules_updated
+    sensor:
+      - name: Tesla charge schedules
+        unique_id: tesla_charge_schedules
+        icon: mdi:ev-station
+        state: "{{ trigger.event.data.count }}"
+        attributes:
+          schedules: "{{ (trigger.event.data.schedules | from_json).charge_schedules }}"
+          read_at: "{{ now().isoformat() }}"   # when the car's list arrived; kept across HA restarts
+  - triggers:
+      - trigger: event
+        event_type: esphome.tesla_precondition_schedules_updated
+    sensor:
+      - name: Tesla precondition schedules
+        unique_id: tesla_precondition_schedules
+        icon: mdi:car-clock
+        state: "{{ trigger.event.data.count }}"
+        attributes:
+          schedules: "{{ (trigger.event.data.schedules | from_json).precondition_schedules }}"
+          read_at: "{{ now().isoformat() }}"   # when the car's list arrived; kept across HA restarts
+
+# ----------------------------------------------------------------------------- schedule editor helpers
+input_select:
+  tesla_schedule_select:
+    name: Tesla schedule
+    icon: mdi:calendar-search
+    # Rebuilt from the schedule sensors by the "sync list" automation. Saved schedules end with " · #<id>".
+    options:
+      - "➕ New precondition schedule"
+      - "➕ New charge schedule"
+  tesla_schedule_type:
+    name: Tesla schedule type
+    icon: mdi:shape
+    options:
+      - precondition
+      - charge
+  tesla_schedule_location:
+    name: Tesla schedule location
+    icon: mdi:map-marker
+    # Filled by the "load selection" automation: your zones (Home first), plus "📍 Keep: …" for a
+    # schedule that is not in any zone, so editing it does not move it.
+    options:
+      - Home
+
+input_datetime:
+  tesla_schedule_time:
+    name: Tesla schedule time   # precondition "ready at" / charge start
+    has_time: true
+    icon: mdi:clock-start
+  tesla_schedule_end:
+    name: Tesla schedule end    # charge end
+    has_time: true
+    icon: mdi:clock-end
+
+input_boolean:
+  tesla_schedule_start_enabled: { name: Tesla schedule use start, icon: mdi:clock-start }
+  tesla_schedule_end_enabled: { name: Tesla schedule use end, icon: mdi:clock-end }
+  tesla_schedule_one_time: { name: Tesla schedule one time, icon: mdi:numeric-1-circle }
+  tesla_schedule_enabled: { name: Tesla schedule enabled, icon: mdi:check-circle }
+  tesla_schedule_day_mon: { name: Mon, icon: mdi:calendar-week }
+  tesla_schedule_day_tue: { name: Tue, icon: mdi:calendar-week }
+  tesla_schedule_day_wed: { name: Wed, icon: mdi:calendar-week }
+  tesla_schedule_day_thu: { name: Thu, icon: mdi:calendar-week }
+  tesla_schedule_day_fri: { name: Fri, icon: mdi:calendar-week }
+  tesla_schedule_day_sat: { name: Sat, icon: mdi:calendar-weekend }
+  tesla_schedule_day_sun: { name: Sun, icon: mdi:calendar-weekend }
+
+# ------------------------------------------------------------------------------------------- scripts
+script:
+  tesla_ensure_awake:
+    alias: Tesla - ensure awake
+    description: >-
+      Wakes the car if it is asleep and waits until it reports awake. Fails if it does not wake within
+      60 s, so callers never send commands to a sleeping car. Every script below calls this first.
+    icon: mdi:sleep-off
+    mode: single
+    max_exceeded: silent
+    sequence:
+      - if:
+          - condition: state
+            entity_id: binary_sensor.tesla_ble_asleep
+            state: "off"
+        then:
+          - stop: Car already awake
+      - action: button.press
+        target:
+          entity_id: button.tesla_ble_wake_up
+      - wait_template: "{{ is_state('binary_sensor.tesla_ble_asleep', 'off') }}"
+        timeout:
+          seconds: 60
+        continue_on_timeout: true
+      - if:
+          - condition: not
+            conditions:
+              - condition: state
+                entity_id: binary_sensor.tesla_ble_asleep
+                state: "off"
+        then:
+          - stop: Car did not wake up within 60 s
+            error: true
+      - delay:
+          seconds: 5   # let the infotainment system settle before commands arrive
+
+  tesla_refresh_schedules:
+    alias: Tesla - refresh schedule lists
+    description: Reads both schedule lists from the car; the sensors update when the events arrive.
+    icon: mdi:refresh
+    mode: single
+    sequence:
+      - action: script.tesla_ensure_awake
+      - action: esphome.tesla_ble_get_charge_schedules
+      - action: esphome.tesla_ble_get_precondition_schedules
+
+  tesla_precondition_now:
+    alias: Tesla - precondition now
+    description: Starts climate (preconditioning) now at the given cabin temperature.
+    icon: mdi:car-defrost-front
+    mode: single
+    fields:
+      temperature:
+        name: Temperature
+        required: true
+        default: 21
+        selector:
+          number: { min: 15, max: 28, step: 0.5, unit_of_measurement: "°C" }
+    sequence:
+      - action: script.tesla_ensure_awake
+      - action: esphome.tesla_ble_start_preconditioning
+        data:
+          temperature: "{{ temperature | default(0) }}"
+
+  tesla_set_precondition_schedule:
+    alias: Tesla - add or edit precondition schedule
+    description: >-
+      Adds a preconditioning (departure) schedule, or edits the one with the given ID. The car only runs a
+      schedule when it is parked near its location: pick a zone, or give latitude/longitude (these win).
+    icon: mdi:car-clock
+    mode: queued
+    fields:
+      schedule_id:
+        name: Schedule ID
+        description: Empty adds a new schedule, an existing ID edits it
+        selector: { text: }
+      time:
+        name: Ready at
+        required: true
+        selector: { time: }
+      days:
+        name: Days
+        required: true
+        default: [Sun, Mon, Tue, Wed, Thu, Fri, Sat]   # every day: a weekday-only default is easy to miss before a weekend trip
+        selector:
+          select:
+            multiple: true
+            options: [Sun, Mon, Tue, Wed, Thu, Fri, Sat]
+      one_time:
+        name: One time
+        required: true
+        default: true   # one-time by default: a forgotten weekly schedule keeps running unnoticed
+        selector: { boolean: }
+      enabled:
+        name: Enabled
+        required: true
+        default: true
+        selector: { boolean: }
+      location:
+        name: Location
+        required: true
+        default: zone.home
+        selector: { entity: { domain: zone } }
+      latitude:
+        name: Latitude (overrides location)
+        selector: { number: { min: -90, max: 90, step: any, mode: box } }
+      longitude:
+        name: Longitude (overrides location)
+        selector: { number: { min: -180, max: 180, step: any, mode: box } }
+    sequence:
+      - variables: &schedule_common_vars
+          day_bits: { Sun: 1, Mon: 2, Tue: 4, Wed: 8, Thu: 16, Fri: 32, Sat: 64 }
+          bits: >-
+            {%- set ns = namespace(b=0) -%}{%- for d in days -%}{%- set ns.b = ns.b + day_bits[d] -%}{%- endfor -%}{{ ns.b -}}
+          zone: "{{ location | default('zone.home') }}"
+          lat: "{{ latitude if latitude is defined and latitude is number else state_attr(zone, 'latitude') }}"
+          lon: "{{ longitude if longitude is defined and longitude is number else state_attr(zone, 'longitude') }}"
+      - action: script.tesla_ensure_awake
+      - action: esphome.tesla_ble_set_precondition_schedule
+        data:
+          schedule_id: "{{ schedule_id | default('') }}"
+          name: ""
+          days_of_week: "{{ bits }}"
+          precondition_time: "{{ (time.split(':')[0] | int) * 60 + (time.split(':')[1] | int) }}"
+          one_time: "{{ one_time | default(true) }}"
+          enabled: "{{ enabled | default(true) }}"
+          latitude: "{{ lat | float }}"
+          longitude: "{{ lon | float }}"
+
+  tesla_set_charge_schedule:
+    alias: Tesla - add or edit charge schedule
+    description: Adds a charging schedule, or edits the one with the given ID.
+    icon: mdi:ev-station
+    mode: queued
+    fields:
+      schedule_id:
+        name: Schedule ID
+        description: Empty adds a new schedule, an existing ID edits it
+        selector: { text: }
+      time:
+        name: Start
+        required: true
+        default: "00:00:00"
+        selector: { time: }
+      start_enabled:
+        name: Use start time
+        required: true
+        default: true
+        selector: { boolean: }
+      end_time:
+        name: End
+        required: true
+        default: "06:00:00"
+        selector: { time: }
+      end_enabled:
+        name: Use end time
+        required: true
+        default: true
+        selector: { boolean: }
+      days:
+        name: Days
+        required: true
+        default: [Sun, Mon, Tue, Wed, Thu, Fri, Sat]
+        selector:
+          select:
+            multiple: true
+            options: [Sun, Mon, Tue, Wed, Thu, Fri, Sat]
+      one_time:
+        name: One time
+        required: true
+        default: true
+        selector: { boolean: }
+      enabled:
+        name: Enabled
+        required: true
+        default: true
+        selector: { boolean: }
+      location:
+        name: Location
+        required: true
+        default: zone.home
+        selector: { entity: { domain: zone } }
+      latitude:
+        name: Latitude (overrides location)
+        selector: { number: { min: -90, max: 90, step: any, mode: box } }
+      longitude:
+        name: Longitude (overrides location)
+        selector: { number: { min: -180, max: 180, step: any, mode: box } }
+    sequence:
+      - variables: *schedule_common_vars
+      - action: script.tesla_ensure_awake
+      - action: esphome.tesla_ble_edit_charge_schedule
+        data:
+          schedule_id: "{{ schedule_id | default('') }}"
+          name: ""
+          days_of_week: "{{ bits }}"
+          start_enabled: "{{ start_enabled | default(true) }}"
+          start_time: "{{ (time.split(':')[0] | int) * 60 + (time.split(':')[1] | int) }}"
+          end_enabled: "{{ end_enabled | default(true) }}"
+          end_time: "{{ (end_time.split(':')[0] | int) * 60 + (end_time.split(':')[1] | int) }}"
+          one_time: "{{ one_time | default(true) }}"
+          enabled: "{{ enabled | default(true) }}"
+          latitude: "{{ lat | float }}"
+          longitude: "{{ lon | float }}"
+
+  tesla_delete_schedule:
+    alias: Tesla - delete schedule
+    description: Deletes one charge or precondition schedule by ID. The list is re-read automatically.
+    icon: mdi:delete-clock
+    mode: queued
+    fields:
+      kind:
+        name: Schedule type
+        required: true
+        default: precondition
+        selector:
+          select:
+            options:
+              - { label: Precondition, value: precondition }
+              - { label: Charge, value: charge }
+      schedule_id:
+        name: Schedule ID
+        required: true
+        selector: { text: }
+    sequence:
+      - action: script.tesla_ensure_awake
+      - if:
+          - "{{ kind == 'charge' }}"   # compares a field value: no native condition for it
+        then:
+          - action: esphome.tesla_ble_delete_charge_schedule
+            data: { schedule_id: "{{ schedule_id }}" }
+        else:
+          - action: esphome.tesla_ble_delete_precondition_schedule
+            data: { schedule_id: "{{ schedule_id }}" }
+
+  # --------------------------------------------------------------------------- editor: save / delete
+  tesla_schedule_editor_save:
+    alias: Tesla schedule editor - save
+    description: >-
+      Saves the schedule in the editor to the car: edits the selected one, or adds a new one. The location
+      is the zone picked in the editor, or the schedule's own location when "📍 Keep: …" is picked.
+    icon: mdi:content-save
+    mode: single
+    sequence:
+      - variables:
+          sel: "{{ states('input_select.tesla_schedule_select') }}"
+          sid: "{{ sel.split('#')[-1] if '#' in sel else '' }}"
+          days: >-
+            {%- set ns = namespace(l=[]) -%}
+            {%- for d in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] -%}
+            {%- if is_state('input_boolean.tesla_schedule_day_' ~ d | lower, 'on') -%}{%- set ns.l = ns.l + [d] -%}{%- endif -%}
+            {%- endfor -%}
+            {{- ns.l -}}
+          existing: >-
+            {%- set p = state_attr('sensor.tesla_precondition_schedules', 'schedules') -%}
+            {%- set c = state_attr('sensor.tesla_charge_schedules', 'schedules') -%}
+            {%- set all = (p if p is list else []) + (c if c is list else []) -%}
+            {{- (all | selectattr('id', 'eq', sid | int(0)) | list | first) | default({}) -}}
+          loc_sel: "{{ states('input_select.tesla_schedule_location') }}"
+          loc_zone: >-
+            {{- states.zone | selectattr('name', 'eq', loc_sel) | map(attribute='entity_id') | first | default('') -}}
+          common:
+            schedule_id: "{{ sid }}"
+            time: "{{ states('input_datetime.tesla_schedule_time') }}"
+            days: "{{ days }}"
+            one_time: "{{ is_state('input_boolean.tesla_schedule_one_time', 'on') }}"
+            enabled: "{{ is_state('input_boolean.tesla_schedule_enabled', 'on') }}"
+            latitude: >-
+              {{- state_attr(loc_zone, 'latitude') if loc_zone
+                  else existing.latitude | default(state_attr('zone.home', 'latitude')) -}}
+            longitude: >-
+              {{- state_attr(loc_zone, 'longitude') if loc_zone
+                  else existing.longitude | default(state_attr('zone.home', 'longitude')) -}}
+      - if:
+          - "{{ days | count == 0 }}"
+        then:
+          - stop: Pick at least one day
+            error: true
+      - if:
+          - condition: state
+            entity_id: input_select.tesla_schedule_type
+            state: charge
+        then:
+          - action: script.tesla_set_charge_schedule
+            data: >-
+              {{- dict(common,
+                      start_enabled=is_state('input_boolean.tesla_schedule_start_enabled', 'on'),
+                      end_time=states('input_datetime.tesla_schedule_end'),
+                      end_enabled=is_state('input_boolean.tesla_schedule_end_enabled', 'on')) -}}
+        else:
+          - action: script.tesla_set_precondition_schedule
+            data: "{{ common }}"
+
+  tesla_schedule_editor_delete:
+    alias: Tesla schedule editor - delete selected
+    description: Deletes the schedule selected in the editor (only that one).
+    icon: mdi:delete
+    mode: single
+    sequence:
+      - variables:
+          sel: "{{ states('input_select.tesla_schedule_select') }}"
+      - if:
+          - "{{ '#' not in sel }}"
+        then:
+          - stop: No saved schedule selected
+            error: true
+      - action: script.tesla_delete_schedule
+        data:
+          kind: "{{ states('input_select.tesla_schedule_type') }}"
+          schedule_id: "{{ sel.split('#')[-1] }}"
+
+# ----------------------------------------------------------------------------------- automations
+automation:
+  - id: tesla_schedules_auto_refresh
+    alias: Tesla schedules - refresh when the car is awake
+    description: >-
+      Reads both schedule lists when the car is awake and in BLE range and the last confirmed read is
+      older than an hour (or missing). It never wakes the car itself, so it costs no extra battery.
+    mode: single
+    max_exceeded: silent
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.tesla_ble_asleep
+        to: "off"
+        for: { seconds: 30 }   # let the infotainment system settle after waking
+      - trigger: state
+        entity_id: binary_sensor.tesla_ble_ble_status
+        to: "on"
+        for: { seconds: 30 }   # car came back into range (it may already be awake)
+      - trigger: time_pattern
+        minutes: "/30"         # catches an awake car whose read went stale while in range
+    conditions:
+      - condition: state
+        entity_id: binary_sensor.tesla_ble_ble_status
+        state: "on"
+      - condition: state
+        entity_id: binary_sensor.tesla_ble_asleep
+        state: "off"
+      - "{{ (state_attr('sensor.tesla_precondition_schedules', 'read_at') | as_datetime(none)) is none
+            or now() - (state_attr('sensor.tesla_precondition_schedules', 'read_at') | as_datetime) > timedelta(hours=1) }}"
+    actions:
+      - action: esphome.tesla_ble_get_charge_schedules
+      - action: esphome.tesla_ble_get_precondition_schedules
+
+  - id: tesla_schedule_editor_sync_list
+    alias: Tesla schedule editor - sync list
+    description: Rebuilds the editor's schedule list when the car's schedules change, keeping the selection.
+    mode: queued
+    max_exceeded: silent
+    triggers:
+      - trigger: state   # no to/from: also fires when only the `schedules` attribute changes
+        entity_id:
+          - sensor.tesla_precondition_schedules
+          - sensor.tesla_charge_schedules
+      - trigger: homeassistant
+        event: start
+    actions:
+      - variables:
+          sel: "{{ states('input_select.tesla_schedule_select') }}"
+          current_id: "{{ sel.split('#')[-1] if '#' in sel else '' }}"
+          pre: >-
+            {%- set p = state_attr('sensor.tesla_precondition_schedules', 'schedules') -%}{{ p if p is list else [] -}}
+          ch: >-
+            {%- set c = state_attr('sensor.tesla_charge_schedules', 'schedules') -%}{{ c if c is list else [] -}}
+          opts: >-
+            {%- macro where(s) -%}
+            {%- set z = namespace(best='', d=99999) -%}
+            {%- for zone in states.zone if zone.attributes.latitude is defined -%}
+            {%- set d = distance(s.latitude, s.longitude, zone.entity_id) -%}
+            {%- if d is number and d <= [zone.attributes.radius | default(100) / 1000, 0.5] | max and d < z.d -%}
+            {%- set z.best = zone.name -%}{%- set z.d = d -%}{%- endif -%}{%- endfor -%}
+            {%- set dh = distance(s.latitude, s.longitude, 'zone.home') -%}
+            {%- if z.best == state_attr('zone.home', 'friendly_name') -%}{%- elif z.best -%}{{ ' · ' ~ z.best }}
+            {%- else -%}{{ ' · Other, ' ~ ((dh | round(1)) if dh < 10 else (dh | round(0) | int)) ~ ' km from Home' }}{%- endif -%}
+            {%- endmacro -%}
+            {%- set ns = namespace(o=['➕ New precondition schedule', '➕ New charge schedule']) -%}
+            {%- for s in pre | sort(attribute='precondition_time') -%}
+            {%- set ns.o = ns.o + ['🌡️ ' ~ s['*precondition_time'] ~ ' · ' ~ s['*days'] ~ ' · '
+                 ~ ('Once' if s.one_time else 'Weekly') ~ ('' if s.enabled else ' · paused') ~ where(s) ~ ' · #' ~ s.id] -%}
+            {%- endfor -%}
+            {%- for s in ch | sort(attribute='start_time') -%}
+            {%- set ns.o = ns.o + ['🔌 ' ~ ((s['*start_time'] ~ '–' ~ s['*end_time']) if s.start_enabled and s.end_enabled
+                 else ('from ' ~ s['*start_time']) if s.start_enabled else ('until ' ~ s['*end_time'])) ~ ' · ' ~ s['*days'] ~ ' · '
+                 ~ ('Once' if s.one_time else 'Weekly') ~ ('' if s.enabled else ' · paused') ~ where(s) ~ ' · #' ~ s.id] -%}
+            {%- endfor -%}
+            {{- ns.o -}}
+      - action: input_select.set_options
+        target:
+          entity_id: input_select.tesla_schedule_select
+        data:
+          options: "{{ opts }}"
+      - variables:
+          reselect: >-
+            {{- (opts | select('search', '#' ~ current_id ~ '$') | list | first) if current_id != '' else '' -}}
+      - if:
+          - "{{ reselect not in ['', none] }}"
+        then:
+          - action: input_select.select_option
+            target:
+              entity_id: input_select.tesla_schedule_select
+            data:
+              option: "{{ reselect }}"
+
+  - id: tesla_schedule_editor_load_selection
+    alias: Tesla schedule editor - load selection
+    description: Fills the editor fields with the selected schedule, or with defaults for a new one.
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: input_select.tesla_schedule_select
+        to: ~   # ignore attribute-only changes (option list rebuilds)
+    actions:
+      - variables:
+          sel: "{{ trigger.to_state.state }}"
+          sid: "{{ sel.split('#')[-1] if '#' in sel else '' }}"
+          pre: >-
+            {%- set p = state_attr('sensor.tesla_precondition_schedules', 'schedules') -%}{{ p if p is list else [] -}}
+          ch: >-
+            {%- set c = state_attr('sensor.tesla_charge_schedules', 'schedules') -%}{{ c if c is list else [] -}}
+          match_pre: "{{ pre | selectattr('id', 'eq', sid | int(0)) | list }}"
+          match_ch: "{{ ch | selectattr('id', 'eq', sid | int(0)) | list }}"
+          kind: "{{ 'charge' if (sel == '➕ New charge schedule' or match_ch | count > 0) else 'precondition' }}"
+          s: >-
+            {%- if match_pre | count > 0 -%}{{ match_pre[0] -}}
+            {%- elif match_ch | count > 0 -%}{{ match_ch[0] -}}
+            {%- elif kind == 'charge' -%}{{ {'days': 127, 'start_time': 0, 'end_time': 360, 'start_enabled': true,
+                                           'end_enabled': true, 'one_time': true, 'enabled': true} -}}
+            {%- else -%}{{ {'days': 127, 'precondition_time': 420, 'one_time': true, 'enabled': true} }}{%- endif -%}
+          t1: "{{ (s.precondition_time if kind == 'precondition' else s.start_time) | int(0) }}"
+          t2: "{{ s.end_time | default(360) | int(0) }}"
+          zone_names: >-
+            {%- set zs = states.zone | selectattr('attributes.latitude', 'defined') | list -%}
+            {{- (zs | selectattr('entity_id', 'eq', 'zone.home') | map(attribute='name') | list)
+                + (zs | rejectattr('entity_id', 'eq', 'zone.home') | map(attribute='name') | sort | list) -}}
+          loc_zone: >-
+            {%- set z = namespace(best='', d=99999) -%}
+            {%- if s.latitude is defined -%}
+            {%- for zone in states.zone if zone.attributes.latitude is defined -%}
+            {%- set d = distance(s.latitude, s.longitude, zone.entity_id) -%}
+            {%- if d is number and d <= [zone.attributes.radius | default(100) / 1000, 0.5] | max and d < z.d -%}
+            {%- set z.best = zone.name -%}{%- set z.d = d -%}{%- endif -%}{%- endfor -%}
+            {%- endif -%}
+            {{- z.best -}}
+          loc_keep: >-
+            {%- if s.latitude is defined and loc_zone == '' -%}
+            {%- set dh = distance(s.latitude, s.longitude, 'zone.home') -%}
+            📍 Keep: Other, {{ (dh | round(1)) if dh < 10 else (dh | round(0) | int) }} km from Home
+            {%- endif -%}
+          loc_options: "{{ zone_names + ([loc_keep] if loc_keep else []) }}"
+          loc_selected: "{{ loc_zone if loc_zone else (loc_keep if loc_keep else zone_names[0]) }}"
+          on_list: >-
+            {%- set names = ['sun','mon','tue','wed','thu','fri','sat'] -%}
+            {%- set ns = namespace(l=[]) -%}
+            {%- for i in range(7) -%}{%- if (s.days | int(0) // (2 ** i)) % 2 == 1 -%}
+            {%- set ns.l = ns.l + ['input_boolean.tesla_schedule_day_' ~ names[i]] -%}{%- endif -%}{%- endfor -%}
+            {%- for flag, on in [('one_time', s.one_time), ('enabled', s.enabled),
+                                ('start_enabled', s.start_enabled | default(true)),
+                                ('end_enabled', s.end_enabled | default(true))] -%}
+            {%- if on -%}{%- set ns.l = ns.l + ['input_boolean.tesla_schedule_' ~ flag] -%}{%- endif -%}{%- endfor -%}
+            {{- ns.l -}}
+          off_list: >-
+            {%- set all = ['sun','mon','tue','wed','thu','fri','sat']
+                         | map('regex_replace', '^', 'input_boolean.tesla_schedule_day_') | list
+                         + ['input_boolean.tesla_schedule_one_time', 'input_boolean.tesla_schedule_enabled',
+                            'input_boolean.tesla_schedule_start_enabled', 'input_boolean.tesla_schedule_end_enabled'] -%}
+            {{- all | reject('in', on_list) | list -}}
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.tesla_schedule_type
+        data:
+          option: "{{ kind }}"
+      - action: input_select.set_options
+        target:
+          entity_id: input_select.tesla_schedule_location
+        data:
+          options: "{{ loc_options }}"
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.tesla_schedule_location
+        data:
+          option: "{{ loc_selected }}"
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.tesla_schedule_time
+        data:
+          time: "{{ '%02d:%02d:00' % ((t1 // 60) % 24, t1 % 60) }}"
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.tesla_schedule_end
+        data:
+          time: "{{ '%02d:%02d:00' % ((t2 // 60) % 24, t2 % 60) }}"
+      - action: input_boolean.turn_on
+        target:
+          entity_id: "{{ on_list if on_list | count > 0 else 'none' }}"
+      - action: input_boolean.turn_off
+        target:
+          entity_id: "{{ off_list if off_list | count > 0 else 'none' }}"

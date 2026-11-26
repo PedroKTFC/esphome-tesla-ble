@@ -438,6 +438,9 @@ namespace esphome
             case GetOnSet::GetChargeScheduleState:
               sendCarServerVehicleActionMessage (BLE_CarServer_VehicleAction::GET_CHARGE_SCHEDULE_STATE, 0);
               break;
+            case GetOnSet::GetPreconditionScheduleState:
+              sendCarServerVehicleActionMessage (BLE_CarServer_VehicleAction::GET_PRECONDITION_SCHEDULE_STATE, 0);
+              break;
             default:
               break; // do nothing
           }
@@ -813,7 +816,8 @@ namespace esphome
         case UniversalMessage_Domain_DOMAIN_INFOTAINMENT:
         {
           UniversalMessage_MessageFault_E fault = UniversalMessage_MessageFault_E_MESSAGEFAULT_ERROR_NONE;
-          static_carserver_response_ = CarServer_Response_init_default;
+          // pb_decode in parsePayloadCarServerResponse sets the proper defaults so no need for preinitialisation
+          // But if pb_decode ever changes may need to revisit
           const bool is_software_update_state_response = !command_queue_.empty() &&
               command_queue_.front().domain == UniversalMessage_Domain_DOMAIN_INFOTAINMENT &&
               command_queue_.front().action == BLE_CarServer_VehicleAction::GET_SOFTWARE_UPDATE_STATE;
@@ -1955,7 +1959,12 @@ namespace esphome
             // Rear right
             publish_which_sensor (climate_state.which_optional_seat_heater_rear_right, seat_heater_rear_right_select_,
                                   [&]() {return lookup_seat_heater_level (climate_state.optional_seat_heater_rear_right.seat_heater_rear_right);}, "rear right seat heater");
-
+            // Absent means off: otherwise a sensor would stay on after the car stops reporting the flag
+            // *** CHECK THIS IS VALID AND CAR DOESN'T ALWAYS INCLUDE STATE IN CLIMATE RESPONSES ***
+            publishSensor (BinarySensorId::IsBatteryHeaterOn,
+                           climate_state_.which_optional_battery_heater ? climate_state_.optional_battery_heater.battery_heater : false);
+            publishSensor (BinarySensorId::IsPreconditioning,
+                           climate_state_.which_optional_is_preconditioning ? climate_state_.optional_is_preconditioning.is_preconditioning : false);
             publishSensor (TextSensorId::LastUpdate, ctime(&timestamp));
           }
           else if (carserver_response.response_msg.vehicleData.has_closures_state)
@@ -2052,7 +2061,7 @@ namespace esphome
               schedules_json_ += "{\"id\":";
               schedules_json_ += std::to_string(s.id);
               schedules_json_ += ",\"name\":";
-              schedules_json_ = schedules_json_ + "\"" + s.name + "\"";
+              schedules_json_ = schedules_json_ + "\"" + json_escape(s.name) + "\"";
               schedules_json_ += ",\"days\":";
               schedules_json_ += std::to_string(s.days_of_week);
               schedules_json_ = schedules_json_ + ",\"*days\":\"" + days_to_string(s.days_of_week) + "\"";
@@ -2086,6 +2095,49 @@ namespace esphome
                     {"comment", "Fields starting with * are derived"},
                     {"count", std::to_string(charge_schedule_state_.charge_schedules_count)},
                     {"schedules", schedules_json_} });
+          }
+          else if (carserver_response.response_msg.vehicleData.has_preconditioning_schedule_state)
+          {
+#ifdef CarServer_PreconditioningScheduleState_size // Only defined if the TeslaBLE library decodes the schedules (not callbacks)
+            auto& precondition_schedule_state_ = carserver_response.response_msg.vehicleData.preconditioning_schedule_state;
+            schedules_json_.clear();
+            schedules_json_ = "{\"precondition_schedules\": [";
+            char hhmm_[16];
+            for (size_t i = 0; i < precondition_schedule_state_.precondition_schedules_count; i++)
+            {
+              const auto &s = precondition_schedule_state_.precondition_schedules[i];
+              if (i != 0)
+                  schedules_json_ += ",";
+              schedules_json_ += "{\"id\":";
+              schedules_json_ += std::to_string(s.id);
+              schedules_json_ = schedules_json_ + ",\"name\":\"" + json_escape(s.name) + "\"";
+              schedules_json_ += ",\"days\":";
+              schedules_json_ += std::to_string(s.days_of_week);
+              schedules_json_ = schedules_json_ + ",\"*days\":\"" + days_to_string(s.days_of_week) + "\"";
+              schedules_json_ += ",\"precondition_time\":";
+              schedules_json_ += std::to_string(s.precondition_time);
+              schedules_json_ += ",\"*precondition_time\":";
+              snprintf (hhmm_, sizeof (hhmm_), "\"%02d:%02d\"", static_cast<int>(s.precondition_time / 60), static_cast<int>(s.precondition_time % 60));
+              schedules_json_ += hhmm_;
+              schedules_json_ += ",\"one_time\":";
+              schedules_json_ += s.one_time ? "true" : "false";
+              schedules_json_ += ",\"enabled\":";
+              schedules_json_ += s.enabled ? "true" : "false";
+              schedules_json_ += ",\"latitude\":";
+              schedules_json_ += std::to_string(s.latitude);
+              schedules_json_ += ",\"longitude\":";
+              schedules_json_ += std::to_string(s.longitude);
+              schedules_json_ += "}";
+            }
+            schedules_json_ += "]}";
+            fire_homeassistant_event ("esphome.tesla_precondition_schedules_updated", {
+                    {"version", "0.1"},
+                    {"comment", "Fields starting with * are derived"},
+                    {"count", std::to_string(precondition_schedule_state_.precondition_schedules_count)},
+                    {"schedules", schedules_json_} });
+#else
+            ESP_LOGW (TAG, "Precondition schedules received but the TeslaBLE library in use cannot decode them, see docs/charging_schedules.md");
+#endif
           }
           break;
         case 0: // No data in the response but presumably otherwise ok (controls) 
