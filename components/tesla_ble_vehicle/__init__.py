@@ -35,8 +35,8 @@ def binary(id, **schema):        return SensorSpec(SensorTypes.BINARY, id, schem
 def numeric(id, **schema):       return SensorSpec(SensorTypes.NUMERIC, id, schema)
 def text(id, **schema):          return SensorSpec(SensorTypes.TEXT, id, schema)
 
-# Key roles that can be requested when pairing. ROLE_CHARGING_MANAGER cannot unlock or drive
-# the car but (as of 2024) cannot wake it either: https://github.com/teslamotors/vehicle-command/issues/232
+# Key roles that can be requested when pairing. ROLE_CHARGING_MANAGER cannot unlock or drive the car.
+# Wake was originally not allowed for it: https://github.com/teslamotors/vehicle-command/issues/232
 KEY_ROLES = {
     "driver": "Keys_Role_ROLE_DRIVER",
     "charging_manager": "Keys_Role_ROLE_CHARGING_MANAGER",

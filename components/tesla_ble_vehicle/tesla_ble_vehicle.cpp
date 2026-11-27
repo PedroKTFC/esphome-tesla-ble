@@ -1291,12 +1291,12 @@ namespace esphome
       ESP_LOGI(TAG, "Not authenticated yet, building whitelist message");
       unsigned char whitelist_message_buffer[VCSEC_ToVCSECMessage_size];
       size_t whitelist_message_length = 0;
-      // Role is set by the key_role option (default driver). ROLE_CHARGING_MANAGER cannot unlock or drive the car,
-      // but wake is not supported for it yet:
+      // Role is set by the key_role option (default driver). ROLE_CHARGING_MANAGER cannot unlock or drive the car.
+      // Wake was originally not supported for it (works on current firmware, older firmware may reject it):
       // https://github.com/teslamotors/vehicle-command/issues/232#issuecomment-2181503570
       if (this->key_role_ == Keys_Role_ROLE_CHARGING_MANAGER)
       {
-        ESP_LOGI(TAG, "Requesting key role: charging manager (no unlock/drive, wake not supported)");
+        ESP_LOGI(TAG, "Requesting key role: charging manager (no unlock/drive)");
       }
       else
       {
