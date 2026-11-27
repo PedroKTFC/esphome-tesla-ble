@@ -300,6 +300,21 @@ The following are instructions if you use `make`. I have never used these so can
 
     <img src="./docs/vehicle-locks.png" width="500">
 
+### Key role
+
+By default the key is paired with the **driver** role, i.e. the same rights as a phone key (it can unlock and drive the car). If you only need charging control, you can request the more restricted **charging manager** role instead. The car itself then refuses to unlock or drive with this key, which matters if the ESP32 is mounted somewhere it could be stolen and its flash read.
+
+```yaml
+tesla_ble_vehicle:
+  key_role: charging_manager # default: driver
+```
+
+Notes:
+
+- The role is fixed when the key is paired. To change it, remove the existing key in the car (Controls > Locks) and pair again.
+- Tesla does not (yet) allow the charging manager role to wake the car ([teslamotors/vehicle-command#232](https://github.com/teslamotors/vehicle-command/issues/232)), so the "Wake up" button and automatic wake attempts will fail. Infotainment sensors (charge level etc.) update while the car is awake, e.g. when it is charging.
+- Commands outside the role's permissions (locks, closures, climate, ...) are rejected by the car.
+
 [commits-shield]: https://img.shields.io/github/commit-activity/y/PedroKTFC/esphome-tesla-ble
 [commits]: https://github.com/PedroKTFC/esphome-tesla-ble/commits/main
 [releases-shield]: https://img.shields.io/github/v/release/PedroKTFC/esphome-tesla-ble

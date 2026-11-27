@@ -35,6 +35,13 @@ def binary(id, **schema):        return SensorSpec(SensorTypes.BINARY, id, schem
 def numeric(id, **schema):       return SensorSpec(SensorTypes.NUMERIC, id, schema)
 def text(id, **schema):          return SensorSpec(SensorTypes.TEXT, id, schema)
 
+# Key roles that can be requested when pairing. ROLE_CHARGING_MANAGER cannot unlock or drive
+# the car but (as of 2024) cannot wake it either: https://github.com/teslamotors/vehicle-command/issues/232
+KEY_ROLES = {
+    "driver": "Keys_Role_ROLE_DRIVER",
+    "charging_manager": "Keys_Role_ROLE_CHARGING_MANAGER",
+}
+
 # Constants
 CONF_VIN = "vin"
 CONF_POST_WAKE_POLL_TIME        = "post_wake_poll_time" # How long to poll for data after car awakes (s)
@@ -45,6 +52,7 @@ CONF_BLE_DISCONNECTED_MIN_TIME  = "ble_disconnected_min_time" # Minimum time BLE
 CONF_FAST_POLL_IF_UNLOCKED      = "fast_poll_if_unlocked" # if != 0, fast polls are enabled when unlocked
 CONF_WAKE_ON_BOOT               = "wake_on_boot" # != 0 wakes car on device boot
 CONF_ALLOW_SETTING_SCHEDULES    = "allow_setting_schedules" # if = 0 the set_charge_schedule action will reject all requests. MUST rebuild if changed
+CONF_KEY_ROLE                   = "key_role" # role requested for the BLE key when pairing (driver / charging_manager)
 CONF_CHARGER_SWITCH             = "charger_switch"
 CONF_DEFROST_SWITCH             = "defrost_switch"
 CONF_CABIN_OVERHEAT_PROTECTION  = "cabin_overheat_protection"
@@ -166,6 +174,7 @@ schema_dict = {
     cv.Optional(CONF_FAST_POLL_IF_UNLOCKED): cv.uint16_t,
     cv.Optional(CONF_WAKE_ON_BOOT): cv.uint16_t,
     cv.Optional(CONF_ALLOW_SETTING_SCHEDULES): cv.uint16_t,
+    cv.Optional(CONF_KEY_ROLE, default="driver"): cv.one_of(*KEY_ROLES, lower=True),
 }
 
 schema_dict[cv.Optional(CONF_CHARGER_SWITCH)] = cv.use_id(switch.Switch)
@@ -194,6 +203,7 @@ async def to_code(config):
     await ble_client.register_ble_node(var, config)
 
     cg.add(var.set_vin(config[CONF_VIN]))
+    cg.add(var.set_key_role(cg.RawExpression(KEY_ROLES[config[CONF_KEY_ROLE]])))
 
     cg.add(
         var.load_polling_parameters(

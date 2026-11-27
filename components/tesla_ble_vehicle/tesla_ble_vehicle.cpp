@@ -46,6 +46,7 @@ namespace esphome
     void TeslaBLEVehicle::dump_config()
     {
       ESP_LOGCONFIG(TAG, "Tesla BLE Vehicle:");
+      ESP_LOGCONFIG(TAG, "  Key role: %s", this->key_role_ == Keys_Role_ROLE_CHARGING_MANAGER ? "charging_manager" : "driver");
       LOG_BINARY_SENSOR("  ", "Asleep Sensor", binary_sensors_[static_cast<size_t>(BinarySensorId::IsAsleep)]);
     }
     TeslaBLEVehicle::TeslaBLEVehicle() : tesla_ble_client_(new TeslaBLE::Client{})
@@ -1290,10 +1291,18 @@ namespace esphome
       ESP_LOGI(TAG, "Not authenticated yet, building whitelist message");
       unsigned char whitelist_message_buffer[VCSEC_ToVCSECMessage_size];
       size_t whitelist_message_length = 0;
-      // support for wake command will be added to ROLE_CHARGING_MANAGER in a future vehicle firmware update
+      // Role is set by the key_role option (default driver). ROLE_CHARGING_MANAGER cannot unlock or drive the car,
+      // but wake is not supported for it yet:
       // https://github.com/teslamotors/vehicle-command/issues/232#issuecomment-2181503570
-      // TODO: change back to ROLE_CHARGING_MANAGER when it's supported
-      int return_code = tesla_ble_client_->buildWhiteListMessage(Keys_Role_ROLE_DRIVER, VCSEC_KeyFormFactor_KEY_FORM_FACTOR_CLOUD_KEY, whitelist_message_buffer, &whitelist_message_length);
+      if (this->key_role_ == Keys_Role_ROLE_CHARGING_MANAGER)
+      {
+        ESP_LOGI(TAG, "Requesting key role: charging manager (no unlock/drive, wake not supported)");
+      }
+      else
+      {
+        ESP_LOGI(TAG, "Requesting key role: driver");
+      }
+      int return_code = tesla_ble_client_->buildWhiteListMessage(this->key_role_, VCSEC_KeyFormFactor_KEY_FORM_FACTOR_CLOUD_KEY, whitelist_message_buffer, &whitelist_message_length);
       if (return_code != 0)
       {
         ESP_LOGE(TAG, "Failed to build whitelist message");

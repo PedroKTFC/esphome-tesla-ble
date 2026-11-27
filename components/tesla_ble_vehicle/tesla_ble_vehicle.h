@@ -305,6 +305,7 @@ namespace esphome
             int ble_disconnected_min_time_;
             int fast_poll_if_unlocked_ = 1; // != 0 enables fast polling
             int allow_setting_schedules_ =0;
+            Keys_Role key_role_ = Keys_Role_ROLE_DRIVER; // role requested when pairing
             int number_updates_since_connection_ = 0;
             UniversalMessage_RoutableMessage read_queue_message_;
             CarServer_Response static_carserver_response_;
@@ -332,6 +333,7 @@ namespace esphome
                                      esp_ble_gattc_cb_param_t *param) override;
             void dump_config() override;
             void set_vin(const char *vin);
+            void set_key_role(Keys_Role key_role) { this->key_role_ = key_role; }
             void load_polling_parameters (const int post_wake_poll_time, const int poll_data_period,
                                           const int poll_asleep_period, const int poll_charging_period,
                                           const int ble_disconnected_min_time, const int fast_poll_if_unlocked,
