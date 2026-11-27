@@ -312,7 +312,7 @@ tesla_ble_vehicle:
 Notes:
 
 - The role is fixed when the key is paired. To change it, first remove the existing key in the car (Controls > Locks), then pair again. Pairing again without removing it keeps the key's original role.
-- Wake was originally not available to the charging manager role ([teslamotors/vehicle-command#232](https://github.com/teslamotors/vehicle-command/issues/232)). Tested on a 2019 Model 3 in November 2026: wake works and unlock is rejected. Older vehicle firmware may still reject wake.
+- Wake was originally not available to the charging manager role ([teslamotors/vehicle-command#232](https://github.com/teslamotors/vehicle-command/issues/232)). Tested on a 2019 Model 3 with vehicle firmware 2026.44.1: wake works and unlock is rejected. Older vehicle firmware may still reject wake.
 - Commands outside the role's permissions (locks, closures, climate, ...) are rejected by the car.
 
 [commits-shield]: https://img.shields.io/github/commit-activity/y/PedroKTFC/esphome-tesla-ble
