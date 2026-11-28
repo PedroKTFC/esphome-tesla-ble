@@ -1836,6 +1836,8 @@ namespace esphome
                                   [&]() {return charge_state.optional_charge_limit_soc.charge_limit_soc;}, "soc limit");
             publish_which_sensor (charge_state.which_optional_charging_amps, NumericSensorId::MaxAmps,
                                   [&]() {return charge_state.optional_charging_amps.charging_amps;}, "charging amps");
+            publish_which_sensor (charge_state.which_optional_charge_current_request_max, NumericSensorId::ChargeCurrentRequestMax,
+                                  [&]() {return charge_state.optional_charge_current_request_max.charge_current_request_max;}, "charge current request max");
             publish_which_sensor (charge_state.which_optional_minutes_to_charge_limit, NumericSensorId::MinsToLimit,
                                   [&]() {return charge_state.optional_minutes_to_charge_limit.minutes_to_charge_limit;}, "minutes to charge limit");
             publish_which_sensor (charge_state.which_optional_battery_range, NumericSensorId::BatteryRange,

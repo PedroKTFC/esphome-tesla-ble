@@ -280,6 +280,7 @@ namespace esphome
             DriverTemp,
             SoftwareUpdateDownloadProgress,
             SoftwareUpdateInstallProgress,
+            ChargeCurrentRequestMax,
             Count
         };
 
