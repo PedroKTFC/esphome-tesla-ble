@@ -9,6 +9,8 @@ from typing import Dict, Any
 CODEOWNERS = ["@PedroKTFC"]
 DEPENDENCIES = ["ble_client"]
 
+ICON_CURRENT_AC = "mdi:current-ac"
+
 class SensorTypes(Enum):
     BINARY =  auto()
     TEXT =    auto()
@@ -77,7 +79,7 @@ SENSORS = {
     "charge_energy_added": numeric (NumericSensorId.ChargeEnergyAdded,
         icon = "mdi:battery-positive", device_class = sensor.DEVICE_CLASS_ENERGY_STORAGE, accuracy_decimals = 2, unit_of_measurement = "kWh",),
     "charge_current": numeric (NumericSensorId.ChargeCurrent,
-        icon = "mdi:current-ac", device_class = sensor.DEVICE_CLASS_CURRENT, unit_of_measurement = "A",),
+        icon = ICON_CURRENT_AC, device_class = sensor.DEVICE_CLASS_CURRENT, unit_of_measurement = "A",),
     "charge_voltage": numeric (NumericSensorId.ChargeVoltage,
         icon = "mdi:flash-triangle", device_class = sensor.DEVICE_CLASS_VOLTAGE, unit_of_measurement = "V",),
     "charge_power": numeric (NumericSensorId.ChargePower,
@@ -85,7 +87,7 @@ SENSORS = {
     "max_soc": numeric (NumericSensorId.MaxSoc,
         icon = "mdi:battery-lock", device_class = sensor.DEVICE_CLASS_BATTERY, unit_of_measurement = "%",),
     "max_amps": numeric (NumericSensorId.MaxAmps,
-        icon = "mdi:current-ac", device_class = sensor.DEVICE_CLASS_CURRENT, unit_of_measurement = "A",),
+        icon = ICON_CURRENT_AC, device_class = sensor.DEVICE_CLASS_CURRENT, unit_of_measurement = "A",),
     "mins_to_limit": numeric (NumericSensorId.MinsToLimit,
         icon = "mdi:timer-sand", device_class = sensor.DEVICE_CLASS_DURATION, unit_of_measurement = "min",),
     "battery_range": numeric (NumericSensorId.BatteryRange,
@@ -131,7 +133,7 @@ SENSORS = {
     "software_update_install_progress": numeric (NumericSensorId.SoftwareUpdateInstallProgress,
         icon = "mdi:progress-wrench", state_class = STATE_CLASS_MEASUREMENT, accuracy_decimals = 0, unit_of_measurement = "%",),
     "charge_current_request_max": numeric (NumericSensorId.ChargeCurrentRequestMax,
-        icon = "mdi:current-ac", device_class = sensor.DEVICE_CLASS_CURRENT, unit_of_measurement = "A",),
+        icon = ICON_CURRENT_AC, device_class = sensor.DEVICE_CLASS_CURRENT, unit_of_measurement = "A",),
     "software_update_state": text (TextSensorId.SoftwareUpdateState,
         icon = "mdi:update",),
     "software_update_version": text (TextSensorId.SoftwareUpdateVersion,
