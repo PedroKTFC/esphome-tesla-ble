@@ -130,6 +130,8 @@ SENSORS = {
         icon = "mdi:progress-download", state_class = STATE_CLASS_MEASUREMENT, accuracy_decimals = 0, unit_of_measurement = "%",),
     "software_update_install_progress": numeric (NumericSensorId.SoftwareUpdateInstallProgress,
         icon = "mdi:progress-wrench", state_class = STATE_CLASS_MEASUREMENT, accuracy_decimals = 0, unit_of_measurement = "%",),
+    "charge_current_request_max": numeric (NumericSensorId.ChargeCurrentRequestMax,
+        icon = "mdi:current-ac", device_class = sensor.DEVICE_CLASS_CURRENT, unit_of_measurement = "A",),
     "software_update_state": text (TextSensorId.SoftwareUpdateState,
         icon = "mdi:update",),
     "software_update_version": text (TextSensorId.SoftwareUpdateVersion,

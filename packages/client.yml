@@ -130,6 +130,9 @@ tesla_ble_vehicle:
   max_amps:
     id: "max_amps"
     name: "Current limit"
+  charge_current_request_max:
+    id: "charge_current_request_max"
+    name: "Charge current request max"
   mins_to_limit:
     id: "mins_to_limit"
     name: "Minutes to limit"
